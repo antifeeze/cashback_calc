@@ -112,7 +112,7 @@
           <td>{{ Spent_With_Cashback }} рублей</td>
         </tr>
         <tr>
-          <th scope="row">Потрачено без кэшбэка</th>
+          <th scope="row">Потрачено без кэшбэка(исключения)</th>
           <td>{{ Spent_No_Cashback }} рублей</td>
         </tr>
          <tr>
@@ -157,6 +157,8 @@
         <tr>
           <th scope="row">Код MCC</th>
           <th>Сумма покупки</th>
+          <th>Кэшбэк</th>
+          <th>%</th>
         </tr>
       </thead>
       <tbody>
@@ -164,6 +166,8 @@
         <tr>
           <th scope="row">{{ k[0] }}</th>
           <td>{{ k[1] }} рублей</td>
+          <td>{{ k[2] }} рублей</td>
+          <td>{{ k[3] }} %</td>
         </tr>
         {% endfor %}
        </tbody>
