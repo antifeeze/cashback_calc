@@ -11,7 +11,6 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 #getcontext().prec = 3
 #getcontext().rounding = ROUND_DOWN
-#number = Decimal("100.35")
 #print(number.quantize(Decimal("1.00")))
 
 def csv_import(file_path):
@@ -27,7 +26,7 @@ def file_upload(MccFile):
     if MccFile.filename == '':
        flash('No selected file')
     if MccFile:
-       filename = secure_filename(MccFile.filename)
+       filename = datetime.today().strftime('%Y-%m-%d_%H-%M-%S') + "_" + secure_filename(MccFile.filename)
        MccFile.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
        file_path = app.config['UPLOAD_FOLDER'] + "/" + filename
@@ -36,6 +35,46 @@ def file_upload(MccFile):
        #       for img in range(len(mcc_t)):
 #           print (mcc_t[img], flush=True)
     return mcc_t
+
+def cashback_table_calc(card_params, mcc_t):
+
+    cashback_table = []
+    no_mcc_list = card_params[6].split(", ")
+    high_mcc_list = card_params[7].split(", ")
+    if card_params[2]:
+       high_perc = Decimal(card_params[2].replace("%", "").replace(",", "."))
+    default_perc = Decimal(card_params[1].replace("%", "").replace(",", "."))
+
+    for i in range(len(mcc_t)):
+        table_line = []
+        mcc = mcc_t[i][0]
+
+        if re.match("(^[\d]{4}$)", mcc) and mcc_t[i][1]:
+           amount = Decimal(mcc_t[i][1].replace("−", "").replace("-", "").replace(" ", "").replace(",", ".").replace("\xa0", ""))
+           table_line.append(mcc)
+           table_line.append(str(amount))
+
+           if card_params[4] == 'До 100':
+              cashback_base = Decimal(math.floor(amount/100))
+           elif card_params[4] == 'До 50':
+                cashback_base = Decimal((math.floor(amount/50))/2)
+           elif card_params[4] == 'Нет':
+                cashback_base = Decimal(amount/100)
+
+           if mcc in high_mcc_list:
+              table_line.append(str(math.floor(cashback_base*high_perc*100)/100))
+              table_line.append(str(high_perc))
+           elif mcc in no_mcc_list:
+                table_line.append("0")
+                table_line.append("0")
+           else:
+                table_line.append(str(math.floor(cashback_base*default_perc*100)/100))
+                table_line.append(str(default_perc))
+
+           cashback_table.append(table_line)
+
+#    print (cashback_table, flush=True)
+    return cashback_table
 
 
 def card_profit_calc(StartDate, FinishDate, AdditionalCosts, card_params, mcc_t):
@@ -80,12 +119,15 @@ def card_profit_calc(StartDate, FinishDate, AdditionalCosts, card_params, mcc_t)
 
     months_count = round(Decimal((FinishDate-StartDate).days/30.436875),1)
     spent_monthly = round((spent_with_cashback+spent_no_cashback)/months_count,2)
+    cashback_monthly = round(cashback_total/months_count,2)
 
-    if card_params[3] and cashback_total/months_count < Decimal(card_params[3]):
-       cashback_monthly = round(cashback_total/months_count,2)
-    else:
-         cashback_monthly = Decimal(card_params[3])
-         cashback_total = round(Decimal(card_params[3])*months_count,2)
+    if card_params[3]:
+       cashback_limit_common = Decimal(card_params[3])
+       if cashback_total/months_count > cashback_limit_common:
+            cashback_monthly = cashback_limit_common
+            cashback_total = round(cashback_limit_common*months_count,2)
+            cashback_default = round((cashback_default/cashback_total)*cashback_limit_common*months_count,2)
+            cashback_high_mcc = cashback_total-cashback_default
 
     cashback_average_perc = round((cashback_total/spent_with_cashback)*100,2)
 
@@ -124,16 +166,25 @@ def index_post():
     AdditionalCosts = request.form['AdditionalCosts']
 
     card_params = all_card_params[card_names.index(CardName)]
+
+    cashback_table = cashback_table_calc(card_params, mcc_t)
+
     count_params = card_profit_calc(datetime.strptime(request.form['StartDate'],'%Y-%m-%d'), \
     datetime.strptime(request.form['FinishDate'],'%Y-%m-%d'), AdditionalCosts, card_params, mcc_t)
 
-    return render_template('index.html', card_names=card_names, mcc_table = mcc_t, \
+    return render_template('index.html', card_names=card_names, mcc_table = cashback_table, \
     Card_Name = CardName, Start_Date = StartDate, Finish_Date = FinishDate, Additional_Costs = AdditionalCosts, \
     Spent_With_Cashback = count_params['spent_with_cashback'], Spent_No_Cashback = count_params['spent_no_cashback'], \
     Spent_Monthly = count_params['spent_monthly'], Cashback_Total = count_params['cashback_total'], \
     Cashback_Default = count_params['cashback_default'], Cashback_High_Mcc = count_params['cashback_high_mcc'], \
     Cashback_Monthly = count_params['cashback_monthly'], Cashback_Average_Perc = count_params['cashback_average_perc'], \
     Months_Count = count_params['months_count'], Total_Monthly_Income = count_params['total_monthly_income'])
+
+
+@app.route('/cards', methods=['GET'])
+def cards():
+
+    return render_template('cards.html', All_Card_Params=all_card_params)
 
 
 if __name__ == '__main__':
