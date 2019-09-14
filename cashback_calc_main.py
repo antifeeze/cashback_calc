@@ -77,45 +77,34 @@ def cashback_table_calc(card_params, mcc_t):
     return cashback_table
 
 
-def card_profit_calc(StartDate, FinishDate, AdditionalCosts, card_params, mcc_t):
+def card_profit_calc(StartDate, FinishDate, AdditionalCosts, card_params, cashback_table):
 
-    cashback_total = 0
-    spent_with_cashback = 0
-    cashback_default = 0
-    cashback_high_mcc = 0
-    spent_no_cashback = 0
+    cashback_total = Decimal(0)
+    cashback_default = Decimal(0)
+    cashback_high_mcc = Decimal(0)
+    spent_with_cashback = Decimal(0)
+    spent_no_cashback = Decimal(0)
 
-    no_mcc_list = card_params[6].split(", ")
-    high_mcc_list = card_params[7].split(", ")
     if card_params[2]:
-       high_perc = Decimal(card_params[2].replace("%", "").replace(",", "."))
-    default_perc = Decimal(card_params[1].replace("%", "").replace(",", "."))
+       high_perc = card_params[2].replace("%", "").replace(",", ".")
+    default_perc = card_params[1].replace("%", "").replace(",", ".")
     #print (high_perc, flush=True)
 
-    for i in range(len(mcc_t)):
-        #print (str(i) + " | " + mcc_t[i][1], flush=True)
-        mcc = mcc_t[i][0]
+    for i in range(len(cashback_table)):
+        amount = Decimal(cashback_table[i][1])
+        cashback = Decimal(cashback_table[i][2])
+        perc = cashback_table[i][3]
 
-        if re.match("(^[\d]{4}$)", mcc) and mcc_t[i][1]:
-           amount = Decimal(mcc_t[i][1].replace("−", "").replace("-", "").replace(" ", "").replace(",", ".").replace("\xa0", ""))
+        cashback_total = cashback+Decimal(cashback_total)
 
-           if card_params[4] == 'До 100':
-              cashback_base = Decimal(math.floor(amount/100))
-           elif card_params[4] == 'До 50':
-                cashback_base = Decimal((math.floor(amount/50))/2)
-           elif card_params[4] == 'Нет':
-                cashback_base = Decimal(amount/100)
-
-           if mcc in high_mcc_list:
-              cashback_total = math.floor((cashback_base*high_perc*100)/100)+Decimal(cashback_total)
-              cashback_high_mcc = math.floor((cashback_base*high_perc*100)/100)+Decimal(cashback_high_mcc)
-              spent_with_cashback = amount+Decimal(spent_with_cashback)
-           elif mcc in no_mcc_list:
-                spent_no_cashback = amount+Decimal(spent_no_cashback)
-           else:
-               cashback_total = math.floor((cashback_base*default_perc*100)/100)+Decimal(cashback_total)
-               cashback_default = math.floor((cashback_base*default_perc*100)/100)+Decimal(cashback_default)
-               spent_with_cashback = amount+Decimal(spent_with_cashback)
+        if perc == high_perc:
+           cashback_high_mcc = cashback+cashback_high_mcc
+           spent_with_cashback = amount+spent_with_cashback
+        elif perc == "0":
+             spent_no_cashback = amount+spent_no_cashback
+        elif perc == default_perc:
+             cashback_default = cashback+cashback_default
+             spent_with_cashback = amount+spent_with_cashback
 
     months_count = round(Decimal((FinishDate-StartDate).days/30.436875),1)
     spent_monthly = round((spent_with_cashback+spent_no_cashback)/months_count,2)
@@ -138,7 +127,6 @@ def card_profit_calc(StartDate, FinishDate, AdditionalCosts, card_params, mcc_t)
 
  #    print (str(cashback_total) + " | " + str(cashback_high_mcc), flush=True)
     total_monthly_income = cashback_monthly-Decimal(AdditionalCosts)-costs_month_fixed
-
 
     return {'spent_with_cashback': spent_with_cashback, 'spent_no_cashback': spent_no_cashback, \
     'spent_monthly': spent_monthly, 'cashback_total': cashback_total, 'cashback_default': cashback_default, \
@@ -166,13 +154,12 @@ def index_post():
     AdditionalCosts = request.form['AdditionalCosts']
 
     card_params = all_card_params[card_names.index(CardName)]
-
     cashback_table = cashback_table_calc(card_params, mcc_t)
 
     count_params = card_profit_calc(datetime.strptime(request.form['StartDate'],'%Y-%m-%d'), \
-    datetime.strptime(request.form['FinishDate'],'%Y-%m-%d'), AdditionalCosts, card_params, mcc_t)
+    datetime.strptime(request.form['FinishDate'],'%Y-%m-%d'), AdditionalCosts, card_params, cashback_table)
 
-    return render_template('index.html', card_names=card_names, mcc_table = cashback_table, \
+    return render_template('index.html', card_names=card_names, Cashback_Table = cashback_table, \
     Card_Name = CardName, Start_Date = StartDate, Finish_Date = FinishDate, Additional_Costs = AdditionalCosts, \
     Spent_With_Cashback = count_params['spent_with_cashback'], Spent_No_Cashback = count_params['spent_no_cashback'], \
     Spent_Monthly = count_params['spent_monthly'], Cashback_Total = count_params['cashback_total'], \
