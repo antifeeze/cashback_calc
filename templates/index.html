@@ -161,7 +161,13 @@
         </table>
 {% endif %}
 {% if Cashback_Table is defined %}
-      <h4 align="center">Таблица покупок</h4>
+      <script>function view(n) {
+     style = document.getElementById(n).style;
+     style.display = (style.display == 'block') ? 'none' : 'block';
+     }</script>
+
+      <a href="#hidden2" onclick="view('hidden2'); return false"><h4 align="center">Посмотреть таблицу покупок</h4></a>
+      <div id="hidden2" style="display: none;">
       <table class="table">
       <thead>
         <tr>
@@ -182,6 +188,7 @@
         {% endfor %}
        </tbody>
     </table>
+    </div>
 {% endif %}
         <footer class="footer">
             <p>&copy; Калькулятор выгодности карты</p>
