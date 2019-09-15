@@ -59,10 +59,7 @@
               <div class="form-group col-md-6">
                 <label for="CardName">Выберите карту</label>
                 <select required class="custom-select" name="CardName">
-                  {% if Card_Name is defined %}
-                  <option selected value="{{ Card_Name }}">{{ Card_Name }}</option>
-                  {% endif %}
-                  {% for k in card_names[1:] %}
+                  {% for k in card_names %}
                   <option value="{{ k }}">{{ k }}</option>
                   {% endfor %}
                 </select>
@@ -139,7 +136,7 @@
           <td>{{ Cashback_Monthly }} рублей</td>
         </tr>
         <tr>
-          <th scope="row">Средний процент кэшбэка</th>
+          <th scope="row">Средний процент кэшбэка(для трат с кэшбэком)</th>
           <td>{{ Cashback_Average_Perc }} %</td>
         </tr>
         <tr>
@@ -177,7 +174,7 @@
     </table>
 {% endif %}
         <footer class="footer">
-            <p>&copy; Калькулятор прибыльности карты</p>
+            <p>&copy; Калькулятор выгодности карты</p>
         </footer>
 
     </div>

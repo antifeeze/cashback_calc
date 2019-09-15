@@ -20,7 +20,8 @@ def csv_import(file_path):
     return reader
 
 all_card_params = csv_import('card_params.csv')
-card_names = [col[0] for col in all_card_params]
+card_names_raw = [col[0] for col in all_card_params]
+card_names = sorted(card_names_raw[1:])
 
 def file_upload(MccFile):
     if MccFile.filename == '':
@@ -41,9 +42,9 @@ def cashback_table_calc(card_params, mcc_t):
     cashback_table = []
     no_mcc_list = card_params[6].split(", ")
     high_mcc_list = card_params[7].split(", ")
+    default_perc = Decimal(card_params[1].replace("%", "").replace(",", "."))
     if card_params[2]:
        high_perc = Decimal(card_params[2].replace("%", "").replace(",", "."))
-    default_perc = Decimal(card_params[1].replace("%", "").replace(",", "."))
 
     for i in range(len(mcc_t)):
         table_line = []
@@ -54,22 +55,23 @@ def cashback_table_calc(card_params, mcc_t):
            table_line.append(mcc)
            table_line.append(str(amount))
 
-           if card_params[4] == 'До 100':
+           if card_params[4] == 'До целых':
               cashback_base = Decimal(math.floor(amount/100))
            elif card_params[4] == 'До 50':
                 cashback_base = Decimal((math.floor(amount/50))/2)
-           elif card_params[4] == 'Нет':
+           elif card_params[4] == 'До сотых':
                 cashback_base = Decimal(amount/100)
 
            if mcc in high_mcc_list:
               table_line.append(str(math.floor(cashback_base*high_perc*100)/100))
               table_line.append(str(high_perc))
            elif mcc in no_mcc_list:
-                table_line.append("0")
-                table_line.append("0")
+                table_line.append("0.00")
+                table_line.append("0.00")
            else:
                 table_line.append(str(math.floor(cashback_base*default_perc*100)/100))
                 table_line.append(str(default_perc))
+
 
            cashback_table.append(table_line)
 
@@ -87,6 +89,9 @@ def card_profit_calc(StartDate, FinishDate, AdditionalCosts, card_params, cashba
 
     if card_params[2]:
        high_perc = card_params[2].replace("%", "").replace(",", ".")
+    else:
+       high_perc = ""
+
     default_perc = card_params[1].replace("%", "").replace(",", ".")
     #print (high_perc, flush=True)
 
@@ -96,12 +101,13 @@ def card_profit_calc(StartDate, FinishDate, AdditionalCosts, card_params, cashba
         perc = cashback_table[i][3]
 
         cashback_total = cashback+Decimal(cashback_total)
-
-        if perc == high_perc:
+        #print (high_perc, flush=True)
+        if high_perc and perc == high_perc:
            cashback_high_mcc = cashback+cashback_high_mcc
            spent_with_cashback = amount+spent_with_cashback
-        elif perc == "0":
+        elif perc == "0.00":
              spent_no_cashback = amount+spent_no_cashback
+             print (spent_no_cashback, flush=True)
         elif perc == default_perc:
              cashback_default = cashback+cashback_default
              spent_with_cashback = amount+spent_with_cashback
@@ -125,7 +131,6 @@ def card_profit_calc(StartDate, FinishDate, AdditionalCosts, card_params, cashba
     else:
        costs_month_fixed = 0
 
- #    print (str(cashback_total) + " | " + str(cashback_high_mcc), flush=True)
     total_monthly_income = cashback_monthly-Decimal(AdditionalCosts)-costs_month_fixed
 
     return {'spent_with_cashback': spent_with_cashback, 'spent_no_cashback': spent_no_cashback, \
@@ -153,7 +158,8 @@ def index_post():
     FinishDate = request.form['FinishDate']
     AdditionalCosts = request.form['AdditionalCosts']
 
-    card_params = all_card_params[card_names.index(CardName)]
+    card_params = all_card_params[card_names_raw.index(CardName)]
+    #print (CardName + "|" + str(card_params), flush=True)
     cashback_table = cashback_table_calc(card_params, mcc_t)
 
     count_params = card_profit_calc(datetime.strptime(request.form['StartDate'],'%Y-%m-%d'), \
