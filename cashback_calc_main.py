@@ -22,7 +22,7 @@ def csv_import(file_path):
 all_card_params = csv_import('card_params.csv')
 card_names_raw = [col[0] for col in all_card_params]
 card_names = sorted(card_names_raw[1:])
-#card_names.insert(0, "Подобрать карты")
+card_names.insert(0, "Подобрать карты")
 
 
 def file_upload(MccFile):
@@ -56,43 +56,117 @@ def cashback_calc (amount, round_rule, perc):
 
 def cashback_table_calc(card_params, mcc_t, choose_card = 0):
 
+    cashback_table = []
 
-   cashback_table = []
-   no_mcc_list = card_params[6].split(", ")
-   high_mcc_list = card_params[7].split(", ")
-   high_mcc_list2 = card_params[9].split(", ")
-   default_perc = Decimal(card_params[1].replace("%", "").replace(",", "."))
-   if card_params[2]:
-      high_perc = Decimal(card_params[2].replace("%", "").replace(",", "."))
-   if card_params[8]:
-      high_perc2 = Decimal(card_params[8].replace("%", "").replace(",", "."))
+    if choose_card == 1:
+       #print (high_perc_list, flush=True)
+       for i in range(len(mcc_t)):
+           table_line = []
+           mcc = mcc_t[i][0]
 
-   for i in range(len(mcc_t)):
-       table_line = []
-       mcc = mcc_t[i][0]
+           if re.match("(^[\d]{4}$)", mcc) and mcc_t[i][1]:
+              amount = Decimal(mcc_t[i][1].replace("−", "").replace("-", "").replace(" ", "").replace(",", ".").replace("\xa0", ""))
 
-       if re.match("(^[\d]{4}$)", mcc) and mcc_t[i][1]:
-          amount = Decimal(mcc_t[i][1].replace("−", "").replace("-", "").replace(" ", "").replace(",", ".").replace("\xa0", ""))
-          table_line.append(mcc)
-          table_line.append(str(amount))
+              table_line.append(mcc)
+              table_line.append(str(amount))
 
-          if mcc in high_mcc_list:
-             table_line.append(str(cashback_calc(amount, card_params[4], high_perc)))
-             table_line.append(str(high_perc))
-          elif mcc in high_mcc_list2:
-               table_line.append(str(cashback_calc(amount, card_params[4], high_perc2)))
-               table_line.append(str(high_perc2))
-          elif mcc in no_mcc_list:
-               table_line.append("0.00")
-               table_line.append("0.00")
-          else:
-               table_line.append(str(cashback_calc(amount, card_params[4], default_perc)))
-               table_line.append(str(default_perc))
+              print(mcc)
+              perc_for_mcc = []
+              for k in range(1, len(card_params)):
 
-          cashback_table.append(table_line)
+                  line = []
+                  if mcc in card_params[k][7].split(", "):
+                     line = [card_params[k][0]]
+                     line.append(Decimal(card_params[k][2].replace("%", "").replace(",", ".")))
+                     line.append(card_params[k][4])
+                  elif mcc in card_params[k][9].split(", "):
+                     line = [card_params[k][0]]
+                     line.append(Decimal(card_params[k][8].replace("%", "").replace(",", ".")))
+                     line.append(card_params[k][4])
+                  elif mcc not in card_params[k][6].split(", "):
+                     line = [card_params[k][0]]
+                     line.append(Decimal(card_params[k][1].replace("%", "").replace(",", ".")))
+                     line.append(card_params[k][4])
+                  else:
+                     line = [card_params[k][0],Decimal("0.00"),""]
+
+                  perc_for_mcc.append(line)
+
+
+                #cashback_table.append(table_line)
+
+              if perc_for_mcc != []:
+
+                 max_perc = sorted([col[1] for col in perc_for_mcc], reverse = True, key=float)[0]
+                 #max_perc = sorted(perc_for_mcc, reverse = True)[0]
+                 #print(perc_for_mcc)
+                 #print(mcc)
+                 #print(max_perc)
+                 perc_for_mcc_max = []
+                 for i in range(len(perc_for_mcc)):
+                     if perc_for_mcc[i][1] == max_perc:
+                        line = [perc_for_mcc[i][0]]
+                        line.append(perc_for_mcc[i][1])
+                        line.append(perc_for_mcc[i][2])
+                        if perc_for_mcc[i][2] == "До сотых":
+                           line.append("3")
+                        elif perc_for_mcc[i][2] == "До 50":
+                           line.append("2")
+                        else:
+                           line.append("1")
+                        #print(line)
+                        perc_for_mcc_max.append(line)
+
+                 max_round = sorted([col[3] for col in perc_for_mcc_max], reverse = True)[0]
+
+                 for n in range(len(perc_for_mcc_max)):
+                     if perc_for_mcc_max[n][3] == max_round:
+
+                        table_line.append(str(cashback_calc(amount, perc_for_mcc_max[n][2], perc_for_mcc_max[n][1])))
+                        table_line.append(str(perc_for_mcc_max[n][1]))
+                        table_line.append(str(perc_for_mcc_max[n][0]))
+                        print(table_line)
+                        break
+
+       cashback_table.append(table_line)
+
+    else:
+         no_mcc_list = card_params[6].split(", ")
+         high_mcc_list = card_params[7].split(", ")
+         high_mcc_list2 = card_params[9].split(", ")
+         default_perc = Decimal(card_params[1].replace("%", "").replace(",", "."))
+
+         if card_params[2]:
+            high_perc = Decimal(card_params[2].replace("%", "").replace(",", "."))
+         if card_params[8]:
+            high_perc2 = Decimal(card_params[8].replace("%", "").replace(",", "."))
+
+         for i in range(len(mcc_t)):
+             table_line = []
+             mcc = mcc_t[i][0]
+
+             if re.match("(^[\d]{4}$)", mcc) and mcc_t[i][1]:
+                amount = Decimal(mcc_t[i][1].replace("−", "").replace("-", "").replace(" ", "").replace(",", ".").replace("\xa0", ""))
+                table_line.append(mcc)
+                table_line.append(str(amount))
+
+                if mcc in high_mcc_list:
+                   table_line.append(str(cashback_calc(amount, card_params[4], high_perc)))
+                   table_line.append(str(high_perc))
+                elif mcc in high_mcc_list2:
+                     table_line.append(str(cashback_calc(amount, card_params[4], high_perc2)))
+                     table_line.append(str(high_perc2))
+                elif mcc in no_mcc_list:
+                     table_line.append("0.00")
+                     table_line.append("0.00")
+                else:
+                     table_line.append(str(cashback_calc(amount, card_params[4], default_perc)))
+                     table_line.append(str(default_perc))
+
+                cashback_table.append(table_line)
 
 #    print (cashback_table, flush=True)
-   return cashback_table
+    return cashback_table
 
 
 def card_profit_calc(StartDate, FinishDate, AdditionalCosts, card_params, cashback_table):
@@ -186,16 +260,12 @@ def index_post():
     AdditionalCosts = request.form['AdditionalCosts']
 
 
-    '''
     if CardName == "Подобрать карты":
-        cashback_table = cashback_table_calc(all_card_params[1:], mcc_t, choose_card = 1)
-        CardName = "Тинькофф black"
-        card_params = all_card_params[card_names_raw.index(CardName)]
-        cashback_table = cashback_table_calc(card_params, mcc_t)
+       card_params = all_card_params[card_names_raw.index(card_names[1])]
+       cashback_table = cashback_table_calc(all_card_params, mcc_t, choose_card = 1)
     else:
-    '''
-    card_params = all_card_params[card_names_raw.index(CardName)]
-    cashback_table = cashback_table_calc(card_params, mcc_t)
+         card_params = all_card_params[card_names_raw.index(CardName)]
+         cashback_table = cashback_table_calc(card_params, mcc_t)
     #print (CardName + "|" + str(card_params), flush=True)
 
 

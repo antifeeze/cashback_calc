@@ -175,6 +175,9 @@
           <th>Сумма покупки</th>
           <th>Кэшбэк</th>
           <th>%</th>
+          {% if card_names[o] == "Подобрать карты" %}
+          <td>Рекомендуемая карта</td>
+          {% endif %}
         </tr>
       </thead>
       <tbody>
@@ -184,6 +187,9 @@
           <td>{{ k[1] }} рублей</td>
           <td>{{ k[2] }} рублей</td>
           <td>{{ k[3] }} %</td>
+          {% if k[4] is defined %}
+          <td>{{ k[4] }}</td>
+          {% endif %}
         </tr>
         {% endfor %}
        </tbody>
