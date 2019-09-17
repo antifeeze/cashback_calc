@@ -45,7 +45,7 @@ def cashback_calc (amount, round_rule, perc):
     amount = Decimal(amount)
 
     if round_rule == 'До целых':
-       cashback = Decimal(math.floor(amount/100))*perc
+       cashback = Decimal(math.floor((amount/100)*perc))
     elif round_rule == 'До 50':
          cashback = math.floor((Decimal(math.floor(amount/50))/2)*perc*100)/100
     elif round_rule == 'До сотых':
@@ -70,7 +70,6 @@ def cashback_table_calc(card_params, mcc_t, choose_card = 0):
               table_line.append(mcc)
               table_line.append(str(amount))
 
-              print(mcc)
               perc_for_mcc = []
               for k in range(1, len(card_params)):
 
@@ -93,15 +92,10 @@ def cashback_table_calc(card_params, mcc_t, choose_card = 0):
                   perc_for_mcc.append(line)
 
 
-                #cashback_table.append(table_line)
-
               if perc_for_mcc != []:
 
                  max_perc = sorted([col[1] for col in perc_for_mcc], reverse = True, key=float)[0]
                  #max_perc = sorted(perc_for_mcc, reverse = True)[0]
-                 #print(perc_for_mcc)
-                 #print(mcc)
-                 #print(max_perc)
                  perc_for_mcc_max = []
                  for i in range(len(perc_for_mcc)):
                      if perc_for_mcc[i][1] == max_perc:
@@ -114,7 +108,6 @@ def cashback_table_calc(card_params, mcc_t, choose_card = 0):
                            line.append("2")
                         else:
                            line.append("1")
-                        #print(line)
                         perc_for_mcc_max.append(line)
 
                  max_round = sorted([col[3] for col in perc_for_mcc_max], reverse = True)[0]
@@ -125,10 +118,10 @@ def cashback_table_calc(card_params, mcc_t, choose_card = 0):
                         table_line.append(str(cashback_calc(amount, perc_for_mcc_max[n][2], perc_for_mcc_max[n][1])))
                         table_line.append(str(perc_for_mcc_max[n][1]))
                         table_line.append(str(perc_for_mcc_max[n][0]))
-                        print(table_line)
+                        #print(table_line)
                         break
 
-       cashback_table.append(table_line)
+              cashback_table.append(table_line)
 
     else:
          no_mcc_list = card_params[6].split(", ")
@@ -165,7 +158,6 @@ def cashback_table_calc(card_params, mcc_t, choose_card = 0):
 
                 cashback_table.append(table_line)
 
-#    print (cashback_table, flush=True)
     return cashback_table
 
 
@@ -266,6 +258,7 @@ def index_post():
     else:
          card_params = all_card_params[card_names_raw.index(CardName)]
          cashback_table = cashback_table_calc(card_params, mcc_t)
+#         print(cashback_table)
     #print (CardName + "|" + str(card_params), flush=True)
 
 
