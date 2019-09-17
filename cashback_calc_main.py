@@ -214,6 +214,34 @@ def card_profit_calc(StartDate, FinishDate, AdditionalCosts, card_params, cashba
     'total_monthly_income': total_monthly_income}
 
 
+def card_recom(cashback_table, StartDate, FinishDate):
+
+    months_count = round(Decimal((FinishDate-StartDate).days/30.436875),1)
+
+    all_cards = []
+    for card_names in [col[4] for col in cashback_table]:
+        for card_name in card_names.split(", "):
+           if card_name not in all_cards:
+              all_cards.append(card_name)
+
+    recom_cards = []
+    for card in all_cards:
+        card_total_cashback = Decimal("0")
+        for i in range(len(cashback_table)):
+            if card in cashback_table[i][4].split(", "):
+               card_total_cashback = card_total_cashback + Decimal(cashback_table[i][2])
+
+        recom_cards.append([card_total_cashback, card, round(card_total_cashback/months_count,2)])
+
+
+
+    recom_cards.sort(reverse=True)
+    recom_cards.append([sum([col[0] for col in recom_cards]), "ИТОГО:", sum([col[2] for col in recom_cards])])
+    #print([sum(x) for x in zip(*[col[0] for col in recom_cards])])
+    #print(recom_cards)
+    return recom_cards
+
+
 @app.route('/', methods=['GET'])
 def main():
     start_date = datetime.today() - timedelta(days=180)
@@ -234,24 +262,27 @@ def index_post():
 
 
     if CardName == "Подобрать карты":
-       card_params = all_card_params[card_names_raw.index(card_names[1])]
+       #card_params = all_card_params[card_names_raw.index(card_names[1])]
        cashback_table = cashback_table_calc(all_card_params, mcc_t, choose_card = 1)
+       recom_cards = card_recom(cashback_table, datetime.strptime(StartDate,'%Y-%m-%d'), datetime.strptime(FinishDate,'%Y-%m-%d'))
+
+       return render_template('index.html', card_names=card_names, Cashback_Table = cashback_table, \
+       Card_Name = CardName, Start_Date = StartDate, Finish_Date = FinishDate, \
+       Recom_Cards = recom_cards)
     else:
          card_params = all_card_params[card_names_raw.index(CardName)]
          cashback_table = cashback_table_calc(card_params, mcc_t)
-    #print (CardName + "|" + str(card_params), flush=True)
 
+         count_params = card_profit_calc(datetime.strptime(request.form['StartDate'],'%Y-%m-%d'), \
+         datetime.strptime(request.form['FinishDate'],'%Y-%m-%d'), AdditionalCosts, card_params, cashback_table)
 
-    count_params = card_profit_calc(datetime.strptime(request.form['StartDate'],'%Y-%m-%d'), \
-    datetime.strptime(request.form['FinishDate'],'%Y-%m-%d'), AdditionalCosts, card_params, cashback_table)
-
-    return render_template('index.html', card_names=card_names, Cashback_Table = cashback_table, \
-    Card_Name = CardName, Start_Date = StartDate, Finish_Date = FinishDate, Additional_Costs = AdditionalCosts, \
-    Spent_With_Cashback = count_params['spent_with_cashback'], Spent_No_Cashback = count_params['spent_no_cashback'], \
-    Spent_Monthly = count_params['spent_monthly'], Cashback_Total = count_params['cashback_total'], \
-    Cashback_Default = count_params['cashback_default'], Cashback_High_Mcc = count_params['cashback_high_mcc'], \
-    Cashback_Monthly = count_params['cashback_monthly'], Cashback_Average_Perc = count_params['cashback_average_perc'], \
-    Months_Count = count_params['months_count'], Total_Monthly_Income = count_params['total_monthly_income'])
+         return render_template('index.html', card_names=card_names, Cashback_Table = cashback_table, \
+         Card_Name = CardName, Start_Date = StartDate, Finish_Date = FinishDate, Additional_Costs = AdditionalCosts, \
+         Spent_With_Cashback = count_params['spent_with_cashback'], Spent_No_Cashback = count_params['spent_no_cashback'], \
+         Spent_Monthly = count_params['spent_monthly'], Cashback_Total = count_params['cashback_total'], \
+         Cashback_Default = count_params['cashback_default'], Cashback_High_Mcc = count_params['cashback_high_mcc'], \
+         Cashback_Monthly = count_params['cashback_monthly'], Cashback_Average_Perc = count_params['cashback_average_perc'], \
+         Months_Count = count_params['months_count'], Total_Monthly_Income = count_params['total_monthly_income'])
 
 
 @app.route('/cards', methods=['GET'])

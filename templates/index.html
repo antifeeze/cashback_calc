@@ -107,6 +107,28 @@
     </table>
   </form>
 
+{% if Card_Name == "Подобрать карты" %}
+      <h4 align="center">Рекомендованные карты</h4>
+      <table class="table">
+      <thead>
+        <tr>
+          <th scope="row">Название карты</th>
+          <th>Суммарный кэшбэк по карте</th>
+          <th>Кэшбэк в месяц</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for k in Recom_Cards %}
+        <tr>
+          <th scope="row">{{ k[1] }}</th>
+          <td>{{ k[0] }} рублей</td>
+          <td>{{ k[2] }} рублей</td>
+        </tr>
+      {% endfor %}
+      <tbody>
+      </table>
+{% endif %}
+
 {% if Spent_Monthly is defined %}
       <h4 align="center">Результаты расчета</h4>
       <table class="table">
@@ -175,7 +197,7 @@
           <th>Сумма покупки</th>
           <th>Кэшбэк</th>
           <th>%</th>
-          {% if card_names[0] == "Подобрать карты" %}
+          {% if Card_Name == "Подобрать карты" %}
           <th>Рекомендуемая карта</th>
           {% endif %}
         </tr>
