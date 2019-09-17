@@ -175,8 +175,8 @@
           <th>Сумма покупки</th>
           <th>Кэшбэк</th>
           <th>%</th>
-          {% if card_names[o] == "Подобрать карты" %}
-          <td>Рекомендуемая карта</td>
+          {% if card_names[0] == "Подобрать карты" %}
+          <th>Рекомендуемая карта</th>
           {% endif %}
         </tr>
       </thead>
@@ -188,7 +188,11 @@
           <td>{{ k[2] }} рублей</td>
           <td>{{ k[3] }} %</td>
           {% if k[4] is defined %}
-          <td>{{ k[4] }}</td>
+          <td>
+          {% for p in k[4].split(", ") %}
+          {{ p }}<br>
+          {% endfor %}
+          </td>
           {% endif %}
         </tr>
         {% endfor %}
