@@ -21,9 +21,6 @@ def csv_import(file_path):
 
 all_card_params = csv_import('card_params.csv')
 #all_card_params = [all_card_params[0], all_card_params[1], all_card_params[3], all_card_params[4], all_card_params[5]]
-card_names_raw = [col[0] for col in all_card_params]
-card_names = sorted(card_names_raw[1:])
-card_names.insert(0, "Подобрать карты")
 
 
 def file_upload(MccFile):
@@ -254,45 +251,25 @@ def card_recom(cb_table, StartDate, FinishDate):
 
 @app.route('/', methods=['GET'])
 def main():
-    start_date = datetime.today() - timedelta(days=180)
 
-    return render_template('index.html', card_names=card_names, \
-    Start_Date = start_date.strftime('%Y-%m-%d'), Finish_Date = datetime.today().strftime('%Y-%m-%d'), \
-    Additional_Costs = 0 )
+    return render_template('index.html', \
+    Start_Date = (datetime.today() - timedelta(days=180)).strftime('%Y-%m-%d'), \
+    Finish_Date = datetime.today().strftime('%Y-%m-%d') )
 
 
 @app.route('/', methods=['POST'])
 def index_post():
 
     mcc_t = file_upload(request.files['MccFile'])
-    CardName = request.form['CardName']
     StartDate = request.form['StartDate']
     FinishDate = request.form['FinishDate']
-    AdditionalCosts = request.form['AdditionalCosts']
 
+    cashback_table = cashback_table_calc(all_card_params, mcc_t, choose_card = 1)
 
-    if CardName == "Подобрать карты":
-       #card_params = all_card_params[card_names_raw.index(card_names[1])]
-       cashback_table = cashback_table_calc(all_card_params, mcc_t, choose_card = 1)
-       recom_cards = card_recom(cashback_table, datetime.strptime(StartDate,'%Y-%m-%d'), datetime.strptime(FinishDate,'%Y-%m-%d'))
+    recom_cards = card_recom(cashback_table, datetime.strptime(StartDate,'%Y-%m-%d'), datetime.strptime(FinishDate,'%Y-%m-%d'))
 
-       return render_template('index.html', card_names=card_names, Cashback_Table = cashback_table, \
-       Card_Name = CardName, Start_Date = StartDate, Finish_Date = FinishDate, \
-       Recom_Cards = recom_cards)
-    else:
-         card_params = all_card_params[card_names_raw.index(CardName)]
-         cashback_table = cashback_table_calc(card_params, mcc_t)
-
-         count_params = card_profit_calc(datetime.strptime(request.form['StartDate'],'%Y-%m-%d'), \
-         datetime.strptime(request.form['FinishDate'],'%Y-%m-%d'), AdditionalCosts, card_params, cashback_table)
-
-         return render_template('index.html', card_names=card_names, Cashback_Table = cashback_table, \
-         Card_Name = CardName, Start_Date = StartDate, Finish_Date = FinishDate, Additional_Costs = AdditionalCosts, \
-         Spent_With_Cashback = count_params['spent_with_cashback'], Spent_No_Cashback = count_params['spent_no_cashback'], \
-         Spent_Monthly = count_params['spent_monthly'], Cashback_Total = count_params['cashback_total'], \
-         Cashback_Default = count_params['cashback_default'], Cashback_High_Mcc = count_params['cashback_high_mcc'], \
-         Cashback_Monthly = count_params['cashback_monthly'], Cashback_Average_Perc = count_params['cashback_average_perc'], \
-         Months_Count = count_params['months_count'], Total_Monthly_Income = count_params['total_monthly_income'])
+    return render_template('index.html', Cashback_Table = cashback_table, \
+    Start_Date = StartDate, Finish_Date = FinishDate, Recom_Cards = recom_cards)
 
 
 @app.route('/cards', methods=['GET'])

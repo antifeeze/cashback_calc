@@ -19,7 +19,7 @@
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
 
-    <title>Калькулятор выгодности карты</title>
+    <title>Подбор карты с кэшбэком</title>
   </head>
 
 <body>
@@ -35,14 +35,14 @@
         </div>
 
   <nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <a class="navbar-brand" href="#">Расчет</a>
+    <a class="navbar-brand" href="#">Подбор карты</a>
        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
     <span class="navbar-toggler-icon"></span>
   </button>
   <div class="collapse navbar-collapse" id="navbarNav">
     <ul class="navbar-nav">
       <li class="nav-item">
-        <a class="nav-link" href="/cards">Параметры карт</a>
+        <a class="nav-link" href="/cards">Список карт</a>
       </li>
       <li class="nav-item">
         <a class="nav-link" href="https://docs.google.com/forms/d/e/1FAIpQLSfVktzq1Z41uLAbNxYKT1s0eDA5ICFa95uBSWYSd25mQfydPQ/viewform">Обратная связь</a>
@@ -54,25 +54,21 @@
   <form method="post" enctype=multipart/form-data>
     <table class="table">
       <thead>
-        <tr>
-          <th scope="col"><h4 align="center">Параметры расчета</h4></th>
-        </tr>
       </thead>
       <tbody>
+       <tr><th></th></tr>
         <tr>
           <th scope="row">
             <div class="form-row">
               <div class="form-group col-md-6">
-                <label for="CardName">Загрузите файл с покупками</label><br>
+              <a class="nav-link" href="https://docs.google.com/document/d/1_c5rZTGbzInjx2u7uCRoyw5V7WdTXiopQZNDddo_z6s">Как подготовить .csv файл</a>
+                <label for="CardName">Загрузите .csv файл с покупками</label>
                 <input required type="file" name="MccFile"">
               </div>
               <div class="form-group col-md-6">
-                <label for="CardName">Выберите карту</label>
-                <select required class="custom-select" name="CardName">
-                  {% for k in card_names %}
-                  <option value="{{ k }}">{{ k }}</option>
-                  {% endfor %}
-                </select>
+                  <div align="left" class="form-group col-md-6"><br>
+                    <input type="submit" class="btn btn-primary btn-lg" value="Посчитать">
+                  </div>
               </div>
             </div>
           </th>
@@ -81,33 +77,20 @@
           <th scope="row">
             <div class="form-row">
               <div class="form-group col-md-6">
-                <label for="StartDate">Стартовая дата</label>
+                <label for="StartDate">Дата первой покупки</label>
                 <input required type="date" name="StartDate" class="form-control" id="StartDate" value="{{ Start_Date }}" placeholder="Стартовая дата">
               </div>
               <div class="form-group col-md-6">
-               <label for="FinishDate">Финишная дата</label>
+               <label for="FinishDate">Дата последней покупки</label>
                <input required type="date" name="FinishDate" class="form-control" id="FinishDate" value="{{ Finish_Date }}" placeholder="Финишная дата">
               </div>
             </div>
           </th>
         </tr>
-        <tr>
-          <th scope="row">
-              <div class="form-row">
-                <div class="form-group col-md-6">
-                  <label for="AdditionalCosts">Ежемесячная плата за дополнительные услуги (обслуживание, смс и т.п.)</label>
-                  <input type="number" size="4" name="AdditionalCosts" min="0" max="1000" value="{{ Additional_Costs }}">
-                </div>
-                <div class="form-group col-md-6">
-                  <input type="submit" class="btn btn-primary btn-lg" value="Посчитать">
-                </div>
-              </div>
-          </th>
       </tbody>
     </table>
   </form>
-
-{% if Card_Name == "Подобрать карты" %}
+{% if Recom_Cards is defined %}
       <h4 align="center">Рекомендованные карты</h4>
       <table class="table">
       <thead>
@@ -129,59 +112,6 @@
       </table>
 {% endif %}
 
-{% if Spent_Monthly is defined %}
-      <h4 align="center">Результаты расчета</h4>
-      <table class="table">
-      <thead>
-        <tr>
-          <th scope="row">Название карты</th>
-          <td>{{ Card_Name }}</td>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <th scope="row">Потрачено с кэшбэком</th>
-          <td>{{ Spent_With_Cashback }} рублей</td>
-        </tr>
-        <tr>
-          <th scope="row">Потрачено без кэшбэка(исключения)</th>
-          <td>{{ Spent_No_Cashback }} рублей</td>
-        </tr>
-         <tr>
-          <th scope="row">Потрачено в среднем за месяц</th>
-          <td>{{ Spent_Monthly }} рублей</td>
-        </tr>
-        <tr>
-          <th scope="row">Кэшбэк за все время</th>
-          <td>{{ Cashback_Total }} рублей</td>
-        </tr>
-        <tr>
-          <th scope="row">Кэшбэк за все время в повышенных категориях</th>
-          <td>{{ Cashback_High_Mcc }} рублей</td>
-        </tr>
-        <tr>
-          <th scope="row">Кэшбэк за все время в остальных категориях</th>
-          <td>{{ Cashback_Default }} рублей</td>
-        </tr>
-        <tr>
-          <th scope="row">Кэшбэк в среднем за месяц</th>
-          <td>{{ Cashback_Monthly }} рублей</td>
-        </tr>
-        <tr>
-          <th scope="row">Средний процент кэшбэка(для трат с кэшбэком)</th>
-          <td>{{ Cashback_Average_Perc }} %</td>
-        </tr>
-        <tr>
-          <th scope="row">Подсчет за период</th>
-          <td>{{ Months_Count }} месяцев</td>
-        </tr>
-        <tr>
-          <th scope="row">Средний общий доход в месяц</th>
-          <td>{{ Total_Monthly_Income }} рублей</td>
-        </tr>
-        <tbody>
-        </table>
-{% endif %}
 {% if Cashback_Table is defined %}
       <script>function view(n) {
      style = document.getElementById(n).style;
@@ -223,7 +153,7 @@
     </div>
 {% endif %}
         <footer class="footer">
-            <p>&copy; Калькулятор выгодности карты</p>
+            <p>&copy; Подбор карты с кэшбэком</p>
         </footer>
 
     </div>
