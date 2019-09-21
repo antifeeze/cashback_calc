@@ -6,8 +6,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = 'uploads'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['UPLOAD_FOLDER'] = 'uploads'
 
 #getcontext().prec = 3
 #getcontext().rounding = ROUND_DOWN
@@ -19,6 +18,7 @@ def csv_import(file_path):
          reader = list(csv.reader(f))
     return reader
 
+
 all_card_params = csv_import('card_params.csv')
 #all_card_params = [all_card_params[0], all_card_params[1], all_card_params[3], all_card_params[4], all_card_params[5]]
 
@@ -27,12 +27,13 @@ def file_upload(MccFile):
     if MccFile.filename == '':
        flash('No selected file')
     if MccFile:
+
        filename = datetime.today().strftime('%Y-%m-%d_%H-%M-%S') + "_" + secure_filename(MccFile.filename)
-       MccFile.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-
+       #MccFile.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
        file_path = app.config['UPLOAD_FOLDER'] + "/" + filename
-       mcc_t = csv_import(file_path)
+       MccFile.save(file_path)
 
+       mcc_t = csv_import(file_path)
        #       for img in range(len(mcc_t)):
 #           print (mcc_t[img], flush=True)
     return mcc_t
@@ -55,13 +56,15 @@ def cashback_calc (amount, round_rule, perc):
 def cashback_table_calc(card_params, mcc_t, choose_card = 0):
 
     cashback_table = []
+    wrong_file_elements = []
 
     if choose_card == 1:
        for i in range(len(mcc_t)):
-           mcc = mcc_t[i][0]
+           mcc = mcc_t[i][0].strip()
+           amount = mcc_t[i][1].strip()
 
-           if re.match("(^[\d]{4}$)", mcc) and mcc_t[i][1]:
-              amount = Decimal(mcc_t[i][1].replace("−", "").replace("-", "").replace(" ", "").replace(",", ".").replace("\xa0", ""))
+           if re.match("(^[\d]{4}$)", mcc) and re.match("(^[-+,.− \d\xa0]*\d+$)", amount):
+              amount = Decimal(mcc_t[i][1].strip().replace("−", "").replace("-", "").replace("+", "").replace(" ", "").replace(",", ".").replace("\xa0", ""))
 
               cashbacks_for_mcc = []
               for k in range(1, len(card_params)):
@@ -102,7 +105,11 @@ def cashback_table_calc(card_params, mcc_t, choose_card = 0):
                  cashback_table.append([mcc, amount, str(cashbacks_for_mcc_max[2]), str(cashbacks_for_mcc_max[1]), cashbacks_for_mcc_max[0]])
               else:
                  cashback_table.append([mcc, amount, str(Decimal("0.00")), str(Decimal("0.00")), "Без кэшбэка"])
-
+           else:
+                if wrong_file_elements == []:
+                   wrong_file_elements = ['wrong_file_elements']
+                wrong_file_elements.append([mcc_t[i][0], mcc_t[i][1], i])
+                #raise ValueError('Недопустимые символы в строке  таблицы покупок!')
     else:
          no_mcc_list = card_params[6].split(", ")
          high_mcc_list = card_params[7].split(", ")
@@ -138,7 +145,10 @@ def cashback_table_calc(card_params, mcc_t, choose_card = 0):
 
                 cashback_table.append(table_line)
 
-    return cashback_table
+    if wrong_file_elements != []:
+       return wrong_file_elements
+    else:
+         return cashback_table
 
 
 def card_profit_calc(StartDate, FinishDate, AdditionalCosts, card_params, cashback_table):
@@ -265,6 +275,10 @@ def index_post():
     FinishDate = request.form['FinishDate']
 
     cashback_table = cashback_table_calc(all_card_params, mcc_t, choose_card = 1)
+
+    if cashback_table[0] == "wrong_file_elements":
+       return render_template('index.html', Wrong_Elements = cashback_table[1:], \
+       Start_Date = StartDate, Finish_Date = FinishDate)
 
     recom_cards = card_recom(cashback_table, datetime.strptime(StartDate,'%Y-%m-%d'), datetime.strptime(FinishDate,'%Y-%m-%d'))
 
