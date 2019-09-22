@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 
 app.config['UPLOAD_FOLDER'] = 'uploads'
-
 #getcontext().prec = 3
 #getcontext().rounding = ROUND_DOWN
 #print(number.quantize(Decimal("1.00")))
@@ -24,8 +23,9 @@ all_card_params = csv_import('card_params.csv')
 
 
 def file_upload(MccFile):
-    if MccFile.filename == '':
-       flash('No selected file')
+    ext = MccFile.filename.rsplit('.', 1)[1].lower()
+    if MccFile.filename == '' or ext != "csv":
+       return ["Wrong ext", ext]
     if MccFile:
 
        filename = datetime.today().strftime('%Y-%m-%d_%H-%M-%S') + "_" + secure_filename(MccFile.filename)
@@ -270,9 +270,13 @@ def main():
 @app.route('/', methods=['POST'])
 def index_post():
 
-    mcc_t = file_upload(request.files['MccFile'])
     StartDate = request.form['StartDate']
     FinishDate = request.form['FinishDate']
+
+    mcc_t = file_upload(request.files['MccFile'])
+    if mcc_t[0] == "Wrong ext":
+       return render_template('index.html', Wrong_Ext = mcc_t[1], \
+       Start_Date = StartDate, Finish_Date = FinishDate)
 
     cashback_table = cashback_table_calc(all_card_params, mcc_t, choose_card = 1)
 
