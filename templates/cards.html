@@ -50,12 +50,12 @@
     </ul>
   </div>
 </nav>
-
+<a class="nav-link" href="https://docs.google.com/document/d/1bQfvg2ylgxIN82FjnAdlQ75UF_BCZQeEv6LxoQD9-HI">Ограничения для попадание в этот список</a>
 
       <table border="1" class="table">
       <thead>
         <tr>
-          {% for k in All_Card_Params[0][:8] %}
+          {% for k in All_Card_Params[0][:10] %}
           <th scope="row">{{ k }}</th>
           {% endfor %}
         </tr>
@@ -64,7 +64,7 @@
         {% for k in All_Card_Params[1:] %}
         <tr>
         <th scope="row">{{ k[0] }}</th>
-        {% for n in k[1:8] %}
+        {% for n in k[1:10] %}
           <td scope="row">{{ n }}</td>
         {% endfor %}
         </tr>
