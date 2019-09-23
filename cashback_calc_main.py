@@ -178,7 +178,6 @@ def card_profit_calc(StartDate, FinishDate, AdditionalCosts, card_params, cashba
         perc = cashback_table[i][3]
 
         cashback_total = cashback+Decimal(cashback_total)
-        #print (high_perc, flush=True)
         if (high_perc or high_perc2) and (perc == high_perc or perc == high_perc2):
            cashback_high_mcc = cashback+cashback_high_mcc
            spent_with_cashback = amount+spent_with_cashback
@@ -208,6 +207,7 @@ def card_profit_calc(StartDate, FinishDate, AdditionalCosts, card_params, cashba
     else:
        costs_month_fixed = 0
 
+    #total_income = total_income-costs_month_fixed*months_count
     total_monthly_income = cashback_monthly-Decimal(AdditionalCosts)-costs_month_fixed
 
     return {'spent_with_cashback': spent_with_cashback, 'spent_no_cashback': spent_no_cashback, \
@@ -217,7 +217,7 @@ def card_profit_calc(StartDate, FinishDate, AdditionalCosts, card_params, cashba
     'total_monthly_income': total_monthly_income}
 
 
-def card_recom(cb_table, StartDate, FinishDate):
+def card_recom(cb_table, StartDate, FinishDate, all_card_params):
 
     months_count = round(Decimal((FinishDate-StartDate).days/30.436875),1)
 
@@ -251,7 +251,12 @@ def card_recom(cb_table, StartDate, FinishDate):
             if card in cb_table[i][4].split(", "):
                card_total_cashback = card_total_cashback + Decimal(cb_table[i][2])
 
-        recom_cards.append([card_total_cashback, card, round(card_total_cashback/months_count,2)])
+        if all_card_params[[col[0] for col in all_card_params].index(card)][5]:
+           total_income = card_total_cashback-Decimal(all_card_params[[col[0] for col in all_card_params].index(card)][5])*months_count
+        else:
+             total_income = card_total_cashback
+        print(card_total_cashback)
+        recom_cards.append([total_income, card, round(total_income/months_count,2)])
 
     recom_cards.sort(reverse=True)
     recom_cards.append([sum([col[0] for col in recom_cards]), "ИТОГО:", sum([col[2] for col in recom_cards])])
@@ -284,7 +289,7 @@ def index_post():
        return render_template('index.html', Wrong_Elements = cashback_table[1:], \
        Start_Date = StartDate, Finish_Date = FinishDate)
 
-    recom_cards = card_recom(cashback_table, datetime.strptime(StartDate,'%Y-%m-%d'), datetime.strptime(FinishDate,'%Y-%m-%d'))
+    recom_cards = card_recom(cashback_table, datetime.strptime(StartDate,'%Y-%m-%d'), datetime.strptime(FinishDate,'%Y-%m-%d'), all_card_params)
 
     return render_template('index.html', Cashback_Table = cashback_table, \
     Start_Date = StartDate, Finish_Date = FinishDate, Recom_Cards = recom_cards)
