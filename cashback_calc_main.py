@@ -255,7 +255,10 @@ def card_recom(cb_table, StartDate, FinishDate, all_card_params):
            total_income = card_total_cashback-Decimal(all_card_params[[col[0] for col in all_card_params].index(card)][5])*months_count
         else:
              total_income = card_total_cashback
-        print(card_total_cashback)
+
+        if all_card_params[[col[0] for col in all_card_params].index(card)][10]:
+           total_income = card_total_cashback-Decimal(all_card_params[[col[0] for col in all_card_params].index(card)][10])
+
         recom_cards.append([total_income, card, round(total_income/months_count,2)])
 
     recom_cards.sort(reverse=True)
