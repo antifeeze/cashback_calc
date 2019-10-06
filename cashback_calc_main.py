@@ -39,18 +39,21 @@ def file_upload(MccFile):
     return mcc_t
 
 
-def cashback_calc (amount, round_rule, perc):
+def cashback_calc (amount, round_rule, perc, amount_min_limit):
     perc = Decimal(perc)
     amount = Decimal(amount)
+    amount_min_limit = Decimal(amount_min_limit)
+    if amount < amount_min_limit:
+       return 0
+    else:
+         if round_rule == 'До целых':
+            cashback = Decimal(math.floor((amount/100)*perc))
+         elif round_rule == 'До 50':
+              cashback = math.floor((Decimal(math.floor(amount/50))/2)*perc*100)/100
+         elif round_rule == 'До сотых':
+              cashback = Decimal(math.floor(amount*perc))/100
 
-    if round_rule == 'До целых':
-       cashback = Decimal(math.floor((amount/100)*perc))
-    elif round_rule == 'До 50':
-         cashback = math.floor((Decimal(math.floor(amount/50))/2)*perc*100)/100
-    elif round_rule == 'До сотых':
-         cashback = Decimal(math.floor(amount*perc))/100
-
-    return cashback
+         return cashback
 
 
 def cashback_table_calc(card_params, mcc_t, choose_card = 0):
@@ -74,18 +77,18 @@ def cashback_table_calc(card_params, mcc_t, choose_card = 0):
                      line = [card_params[k][0]]
                      high_perc = Decimal(card_params[k][2].replace("%", "").replace(",", "."))
                      line.append(high_perc)
-                     line.append(cashback_calc(amount, card_params[k][4], high_perc))
+                     line.append(cashback_calc(amount, card_params[k][4], high_perc, card_params[k][11]))
                   elif mcc in card_params[k][9].split(", "):
                      line = [card_params[k][0]]
                      high_perc2 = Decimal(card_params[k][8].replace("%", "").replace(",", "."))
                      line.append(high_perc2)
-                     line.append(cashback_calc(amount, card_params[k][4], high_perc2))
+                     line.append(cashback_calc(amount, card_params[k][4], high_perc2, card_params[k][11]))
                   elif mcc not in card_params[k][6].split(", "):
                      default_perc = Decimal(card_params[k][1].replace("%", "").replace(",", "."))
                      if default_perc != Decimal("0.00"):
                         line = [card_params[k][0]]
                         line.append(default_perc)
-                        line.append(cashback_calc(amount, card_params[k][4], default_perc))
+                        line.append(cashback_calc(amount, card_params[k][4], default_perc, card_params[k][11]))
 
                   if line != []:
                      cashbacks_for_mcc.append(line)
@@ -150,7 +153,7 @@ def cashback_table_calc(card_params, mcc_t, choose_card = 0):
     else:
          return cashback_table
 
-
+#not it use
 def card_profit_calc(StartDate, FinishDate, AdditionalCosts, card_params, cashback_table):
 
     cashback_total = Decimal(0)
@@ -217,49 +220,50 @@ def card_profit_calc(StartDate, FinishDate, AdditionalCosts, card_params, cashba
     'total_monthly_income': total_monthly_income}
 
 
-def card_recom(cb_table, StartDate, FinishDate, all_card_params):
-
-    months_count = round(Decimal((FinishDate-StartDate).days/30.436875),1)
-
+def recom_cards_count(cashback_table, all_card_params, months_count):
+    # get all card names from cashback_table
     all_cards = []
-    for card_names in [col[4] for col in cb_table]:
+    for card_names in [col[4] for col in cashback_table]:
         for card_name in card_names.split(", "):
            if card_name not in all_cards:
               all_cards.append(card_name)
-
+    print(all_cards)
+    # get recom cards list
     recom_cards = []
     for card in all_cards:
-        card_total_cashback = Decimal("0")
-        for i in range(len(cb_table)):
-            if card in cb_table[i][4].split(", "):
-               card_total_cashback = card_total_cashback + Decimal(cb_table[i][2])
+        card_total_income = Decimal("0")
+        for i in range(len(cashback_table)):
+            if card in cashback_table[i][4].split(", "):
+               card_total_income = card_total_income + Decimal(cashback_table[i][2])
 
-        recom_cards.append([card_total_cashback, card, round(card_total_cashback/months_count,2)])
+            issue_fee = Decimal(all_card_params[[col[0] for col in all_card_params].index(card)][10])
+            monthly_fee = Decimal(all_card_params[[col[0] for col in all_card_params].index(card)][5])
 
-    for n in range(len(cb_table)):
-        if len(cb_table[n][4].split(", ")) > 1:
+        card_total_income = round(card_total_income - monthly_fee*months_count - issue_fee/months_count,2)
+        recom_cards.append([card_total_income, card, round(card_total_income/months_count,2)])
+
+    return recom_cards
+
+
+def card_recom(cashback_table, StartDate, FinishDate, all_card_params):
+
+    months_count = round(Decimal((FinishDate-StartDate).days/30.436875),1)
+
+    # count total income for each card for every purchase
+    recom_cards = recom_cards_count(cashback_table, all_card_params, months_count)
+    # define a card with max cashback for each purchase
+    for n in range(len(cashback_table)):
+        if len(cashback_table[n][4].split(", ")) > 1:
 
            spents = []
-           for card in cb_table[n][4].split(", "):
+           for card in cashback_table[n][4].split(", "):
                spents.append(recom_cards[[col[1] for col in recom_cards].index(card)][0])
-           cb_table[n][4] = recom_cards[[col[0] for col in recom_cards].index(max(spents))][1]
-
-    recom_cards = []
-    for card in all_cards:
-        card_total_cashback = Decimal("0")
-        for i in range(len(cb_table)):
-            if card in cb_table[i][4].split(", "):
-               card_total_cashback = card_total_cashback + Decimal(cb_table[i][2])
-
-        if all_card_params[[col[0] for col in all_card_params].index(card)][5]:
-           total_income = card_total_cashback-Decimal(all_card_params[[col[0] for col in all_card_params].index(card)][5])*months_count
-        else:
-             total_income = card_total_cashback
-
-        if all_card_params[[col[0] for col in all_card_params].index(card)][10]:
-           total_income = card_total_cashback-Decimal(all_card_params[[col[0] for col in all_card_params].index(card)][10])
-
-        recom_cards.append([total_income, card, round(total_income/months_count,2)])
+           # modify cashback_table
+           cashback_table[n][4] = recom_cards[[col[0] for col in recom_cards].index(max(spents))][1]
+           #print(cashback_table[n][4])
+    # count cashback for every purchase with the best card
+    recom_cards = recom_cards_count(cashback_table, all_card_params, months_count)
+    print(recom_cards)
 
     recom_cards.sort(reverse=True)
     recom_cards.append([sum([col[0] for col in recom_cards]), "ИТОГО:", sum([col[2] for col in recom_cards])])
