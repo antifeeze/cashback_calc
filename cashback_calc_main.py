@@ -33,10 +33,20 @@ def file_upload(MccFile):
        file_path = app.config['UPLOAD_FOLDER'] + "/" + filename
        MccFile.save(file_path)
 
-       mcc_t = csv_import(file_path)
-       #       for img in range(len(mcc_t)):
-#           print (mcc_t[img], flush=True)
-    return mcc_t
+       mcc_table = csv_import(file_path)
+       #       for img in range(len(mcc_table)):
+#           print (mcc_table[img], flush=True)
+    return mcc_table
+
+
+def check_mcc_table(mcc_table):
+    wrong_file_elements = []
+    for i in range(len(mcc_table)):
+        if not (re.match("(^[\d]{4}$)", str(mcc_table[i][0]).strip()) and re.match("(^[-+,.− \d\xa0]*\d+$)", str(mcc_table[i][1]).strip())):
+           if wrong_file_elements == []:
+              wrong_file_elements = ['wrong_file_elements']
+           wrong_file_elements.append([mcc_table[i][0], mcc_table[i][1], i])
+    return wrong_file_elements
 
 
 def cashback_calc (amount, round_rule, perc, amount_min_limit):
@@ -56,168 +66,53 @@ def cashback_calc (amount, round_rule, perc, amount_min_limit):
          return cashback
 
 
-def cashback_table_calc(card_params, mcc_t, choose_card = 0):
+def cashback_table_calc(card_params, mcc_table):
 
     cashback_table = []
-    wrong_file_elements = []
+    for i in range(len(mcc_table)):
+        mcc = str(mcc_table[i][0]).strip()
+        amount = Decimal(str(mcc_table[i][1]).strip().replace("−", "").replace("-", "").\
+        replace("+", "").replace(" ", "").replace(",", ".").replace("\xa0", ""))
 
-    if choose_card == 1:
-       for i in range(len(mcc_t)):
-           mcc = mcc_t[i][0].strip()
-           amount = mcc_t[i][1].strip()
+        cashbacks_for_mcc = []
+        for k in range(1, len(card_params)):
 
-           if re.match("(^[\d]{4}$)", mcc) and re.match("(^[-+,.− \d\xa0]*\d+$)", amount):
-              amount = Decimal(mcc_t[i][1].strip().replace("−", "").replace("-", "").replace("+", "").replace(" ", "").replace(",", ".").replace("\xa0", ""))
+            line = []
+            if mcc in card_params[k][7].split(", "):
+               line = [card_params[k][0]]
+               high_perc = Decimal(card_params[k][2].replace("%", "").replace(",", "."))
+               line.append(high_perc)
+               line.append(cashback_calc(amount, card_params[k][4], high_perc, card_params[k][11]))
+            elif mcc in card_params[k][9].split(", "):
+                 line = [card_params[k][0]]
+                 high_perc2 = Decimal(card_params[k][8].replace("%", "").replace(",", "."))
+                 line.append(high_perc2)
+                 line.append(cashback_calc(amount, card_params[k][4], high_perc2, card_params[k][11]))
+            elif mcc not in card_params[k][6].split(", "):
+                 default_perc = Decimal(card_params[k][1].replace("%", "").replace(",", "."))
+                 if default_perc != Decimal("0.00"):
+                    line = [card_params[k][0]]
+                    line.append(default_perc)
+                    line.append(cashback_calc(amount, card_params[k][4], default_perc, card_params[k][11]))
 
-              cashbacks_for_mcc = []
-              for k in range(1, len(card_params)):
+            if line != []:
+               cashbacks_for_mcc.append(line)
 
-                  line = []
-                  if mcc in card_params[k][7].split(", "):
-                     line = [card_params[k][0]]
-                     high_perc = Decimal(card_params[k][2].replace("%", "").replace(",", "."))
-                     line.append(high_perc)
-                     line.append(cashback_calc(amount, card_params[k][4], high_perc, card_params[k][11]))
-                  elif mcc in card_params[k][9].split(", "):
-                     line = [card_params[k][0]]
-                     high_perc2 = Decimal(card_params[k][8].replace("%", "").replace(",", "."))
-                     line.append(high_perc2)
-                     line.append(cashback_calc(amount, card_params[k][4], high_perc2, card_params[k][11]))
-                  elif mcc not in card_params[k][6].split(", "):
-                     default_perc = Decimal(card_params[k][1].replace("%", "").replace(",", "."))
-                     if default_perc != Decimal("0.00"):
-                        line = [card_params[k][0]]
-                        line.append(default_perc)
-                        line.append(cashback_calc(amount, card_params[k][4], default_perc, card_params[k][11]))
+           # find max cashback
+        if len(cashbacks_for_mcc) >= 1:
+           cashbacks_for_mcc_max = cashbacks_for_mcc[0]
+           if len(cashbacks_for_mcc) > 1:
+              max_cashback = cashbacks_for_mcc[0][2]
+              for n in range(1, len(cashbacks_for_mcc)):
+                  if cashbacks_for_mcc[n][2] > max_cashback:
+                     cashbacks_for_mcc_max = cashbacks_for_mcc[n]
+                     max_cashback = cashbacks_for_mcc[n][2]
+                  elif cashbacks_for_mcc[n][2] == max_cashback:
+                       cashbacks_for_mcc_max[0] = cashbacks_for_mcc_max[0] + ", " + cashbacks_for_mcc[n][0]
 
-                  if line != []:
-                     cashbacks_for_mcc.append(line)
+           cashback_table.append([mcc, amount, str(cashbacks_for_mcc_max[2]), str(cashbacks_for_mcc_max[1]), cashbacks_for_mcc_max[0]])
 
-              # find max cashback
-              if len(cashbacks_for_mcc) >= 1:
-                 cashbacks_for_mcc_max = cashbacks_for_mcc[0]
-                 if len(cashbacks_for_mcc) > 1:
-                    max_cashback = cashbacks_for_mcc[0][2]
-                    for n in range(1, len(cashbacks_for_mcc)):
-                        if cashbacks_for_mcc[n][2] > max_cashback:
-                           cashbacks_for_mcc_max = cashbacks_for_mcc[n]
-                           max_cashback = cashbacks_for_mcc[n][2]
-                        elif cashbacks_for_mcc[n][2] == max_cashback:
-                             cashbacks_for_mcc_max[0] = cashbacks_for_mcc_max[0] + ", " + cashbacks_for_mcc[n][0]
-
-                 cashback_table.append([mcc, amount, str(cashbacks_for_mcc_max[2]), str(cashbacks_for_mcc_max[1]), cashbacks_for_mcc_max[0]])
-              else:
-                 cashback_table.append([mcc, amount, str(Decimal("0.00")), str(Decimal("0.00")), "Без кэшбэка"])
-           else:
-                if wrong_file_elements == []:
-                   wrong_file_elements = ['wrong_file_elements']
-                wrong_file_elements.append([mcc_t[i][0], mcc_t[i][1], i])
-                #raise ValueError('Недопустимые символы в строке  таблицы покупок!')
-    else:
-         no_mcc_list = card_params[6].split(", ")
-         high_mcc_list = card_params[7].split(", ")
-         high_mcc_list2 = card_params[9].split(", ")
-         default_perc = Decimal(card_params[1].replace("%", "").replace(",", "."))
-
-         if card_params[2]:
-            high_perc = Decimal(card_params[2].replace("%", "").replace(",", "."))
-         if card_params[8]:
-            high_perc2 = Decimal(card_params[8].replace("%", "").replace(",", "."))
-
-         for i in range(len(mcc_t)):
-             table_line = []
-             mcc = mcc_t[i][0]
-
-             if re.match("(^[\d]{4}$)", mcc) and mcc_t[i][1]:
-                amount = Decimal(mcc_t[i][1].replace("−", "").replace("-", "").replace(" ", "").replace(",", ".").replace("\xa0", ""))
-                table_line.append(mcc)
-                table_line.append(str(amount))
-
-                if mcc in high_mcc_list:
-                   table_line.append(str(cashback_calc(amount, card_params[4], high_perc)))
-                   table_line.append(str(high_perc))
-                elif mcc in high_mcc_list2:
-                     table_line.append(str(cashback_calc(amount, card_params[4], high_perc2)))
-                     table_line.append(str(high_perc2))
-                elif mcc in no_mcc_list:
-                     table_line.append("0.00")
-                     table_line.append("0.00")
-                else:
-                     table_line.append(str(cashback_calc(amount, card_params[4], default_perc)))
-                     table_line.append(str(default_perc))
-
-                cashback_table.append(table_line)
-
-    if wrong_file_elements != []:
-       return wrong_file_elements
-    else:
-         return cashback_table
-
-#not it use
-def card_profit_calc(StartDate, FinishDate, AdditionalCosts, card_params, cashback_table):
-
-    cashback_total = Decimal(0)
-    cashback_default = Decimal(0)
-    cashback_high_mcc = Decimal(0)
-    spent_with_cashback = Decimal(0)
-    spent_no_cashback = Decimal(0)
-
-    if card_params[2]:
-       high_perc = card_params[2].replace("%", "").replace(",", ".")
-    else:
-       high_perc = ""
-
-    if card_params[8]:
-       high_perc2 = card_params[8].replace("%", "").replace(",", ".")
-    else:
-       high_perc2 = ""
-
-    default_perc = card_params[1].replace("%", "").replace(",", ".")
-    #print (high_perc, flush=True)
-
-    for i in range(len(cashback_table)):
-        amount = Decimal(cashback_table[i][1])
-        cashback = Decimal(cashback_table[i][2])
-        perc = cashback_table[i][3]
-
-        cashback_total = cashback+Decimal(cashback_total)
-        if (high_perc or high_perc2) and (perc == high_perc or perc == high_perc2):
-           cashback_high_mcc = cashback+cashback_high_mcc
-           spent_with_cashback = amount+spent_with_cashback
-        elif perc == "0.00":
-             spent_no_cashback = amount+spent_no_cashback
-#             print (spent_no_cashback, flush=True)
-        elif perc == default_perc:
-             cashback_default = cashback+cashback_default
-             spent_with_cashback = amount+spent_with_cashback
-
-    months_count = round(Decimal((FinishDate-StartDate).days/30.436875),1)
-    spent_monthly = round((spent_with_cashback+spent_no_cashback)/months_count,2)
-    cashback_monthly = round(cashback_total/months_count,2)
-
-    if card_params[3]:
-       cashback_limit_common = Decimal(card_params[3])
-       if cashback_total/months_count > cashback_limit_common:
-            cashback_monthly = cashback_limit_common
-            cashback_total = round(cashback_limit_common*months_count,2)
-            cashback_default = round((cashback_default/cashback_total)*cashback_limit_common*months_count,2)
-            cashback_high_mcc = cashback_total-cashback_default
-
-    cashback_average_perc = round((cashback_total/spent_with_cashback)*100,2)
-
-    if card_params[5]:
-       costs_month_fixed = Decimal(card_params[5])
-    else:
-       costs_month_fixed = 0
-
-    #total_income = total_income-costs_month_fixed*months_count
-    total_monthly_income = cashback_monthly-Decimal(AdditionalCosts)-costs_month_fixed
-
-    return {'spent_with_cashback': spent_with_cashback, 'spent_no_cashback': spent_no_cashback, \
-    'spent_monthly': spent_monthly, 'cashback_total': cashback_total, 'cashback_default': cashback_default, \
-    'cashback_high_mcc': cashback_high_mcc, 'cashback_monthly': cashback_monthly, \
-    'cashback_average_perc': cashback_average_perc, 'months_count': months_count, \
-    'total_monthly_income': total_monthly_income}
+    return cashback_table
 
 
 def recom_cards_count(cashback_table, all_card_params, months_count):
@@ -238,14 +133,17 @@ def recom_cards_count(cashback_table, all_card_params, months_count):
 
             issue_fee = Decimal(all_card_params[[col[0] for col in all_card_params].index(card)][10])
             monthly_fee = Decimal(all_card_params[[col[0] for col in all_card_params].index(card)][5])
-
-        card_total_income = round(card_total_income - monthly_fee*months_count - issue_fee/months_count,2)
+#            print(issue_fee)
+#            print(monthly_fee)
+#            print(card_total_income)
+        card_total_income = round(card_total_income - monthly_fee*months_count - issue_fee,2)
         recom_cards.append([card_total_income, card, round(card_total_income/months_count,2)])
 
     return recom_cards
 
 
-def card_recom(cashback_table, StartDate, FinishDate, all_card_params):
+
+def card_recom(cashback_table, StartDate, FinishDate, all_card_params, mcc_table):
 
     months_count = round(Decimal((FinishDate-StartDate).days/30.436875),1)
 
@@ -260,15 +158,37 @@ def card_recom(cashback_table, StartDate, FinishDate, all_card_params):
                spents.append(recom_cards[[col[1] for col in recom_cards].index(card)][0])
            # modify cashback_table
            cashback_table[n][4] = recom_cards[[col[0] for col in recom_cards].index(max(spents))][1]
-           #print(cashback_table[n][4])
     # count cashback for every purchase with the best card
     recom_cards = recom_cards_count(cashback_table, all_card_params, months_count)
     print(recom_cards)
+
+    # remove cards with minus result
+    for n in range(len(recom_cards)):
+        if recom_cards[n][0] < 0:
+           all_card_params.remove(all_card_params[[col[0] for col in all_card_params].index(recom_cards[n][1])])
+
+    cashback_table = cashback_table_calc(all_card_params, cashback_table)
+
+
+    print(cashback_table)
+    #cashback_table = cashback_table_calc(all_card_params, mcc_table, choose_card = 1)
 
     recom_cards.sort(reverse=True)
     recom_cards.append([sum([col[0] for col in recom_cards]), "ИТОГО:", sum([col[2] for col in recom_cards])])
     #print(recom_cards)
     return recom_cards
+
+
+def choose_one_card_per_purchase(cashback_table, recom_cards):
+    for n in range(len(cashback_table)):
+        if len(cashback_table[n][4].split(", ")) > 1:
+
+           spents = []
+           for card in cashback_table[n][4].split(", "):
+               spents.append(recom_cards[[col[1] for col in recom_cards].index(card)][0])
+           # modify cashback_table
+           cashback_table[n][4] = recom_cards[[col[0] for col in recom_cards].index(max(spents))][1]
+    return cashback_table
 
 
 @app.route('/', methods=['GET'])
@@ -282,21 +202,44 @@ def main():
 @app.route('/', methods=['POST'])
 def index_post():
 
-    StartDate = request.form['StartDate']
-    FinishDate = request.form['FinishDate']
+    StartDate = datetime.strptime(request.form['StartDate'],'%Y-%m-%d')
+    FinishDate = datetime.strptime(request.form['FinishDate'],'%Y-%m-%d')
+    months_count = round(Decimal((FinishDate-StartDate).days/30.436875),1)
 
-    mcc_t = file_upload(request.files['MccFile'])
-    if mcc_t[0] == "Wrong ext":
-       return render_template('index.html', Wrong_Ext = mcc_t[1], \
+    # check input
+    mcc_table = file_upload(request.files['MccFile'])
+    if mcc_table[0] == "Wrong ext":
+       return render_template('index.html', Wrong_Ext = mcc_table[1], \
        Start_Date = StartDate, Finish_Date = FinishDate)
 
-    cashback_table = cashback_table_calc(all_card_params, mcc_t, choose_card = 1)
-
-    if cashback_table[0] == "wrong_file_elements":
-       return render_template('index.html', Wrong_Elements = cashback_table[1:], \
+    if len(check_mcc_table(mcc_table)) > 0:
+       return render_template('index.html', Wrong_Elements = check_mcc_table(mcc_table), \
        Start_Date = StartDate, Finish_Date = FinishDate)
 
-    recom_cards = card_recom(cashback_table, datetime.strptime(StartDate,'%Y-%m-%d'), datetime.strptime(FinishDate,'%Y-%m-%d'), all_card_params)
+    # count max cashback for each purchase
+    cashback_table = cashback_table_calc(all_card_params, mcc_table)
+    # count total income for each card for every purchase
+    recom_cards = recom_cards_count(cashback_table, all_card_params, months_count)
+    # choose card with max cashback per purchase and modify cashback_table
+    cashback_table = choose_one_card_per_purchase(cashback_table, recom_cards)
+    # count cashback for every purchase with the best card
+    recom_cards = recom_cards_count(cashback_table, all_card_params, months_count)
+    # remove cards with minus result
+    for n in range(len(recom_cards)):
+        if recom_cards[n][0] < 0:
+           all_card_params.remove(all_card_params[[col[0] for col in all_card_params].index(recom_cards[n][1])])
+
+    # recount max cashback for each purchase
+    cashback_table = cashback_table_calc(all_card_params, mcc_table)
+    # count total income for each card for every purchase
+    recom_cards = recom_cards_count(cashback_table, all_card_params, months_count)
+    # choose card with max cashback per purchase and modify cashback_table
+    cashback_table = choose_one_card_per_purchase(cashback_table, recom_cards)
+    # count cashback for every purchase with the best card
+    recom_cards = recom_cards_count(cashback_table, all_card_params, months_count)
+
+    recom_cards.sort(reverse=True)
+    recom_cards.append([sum([col[0] for col in recom_cards]), "ИТОГО:", sum([col[2] for col in recom_cards])])
 
     return render_template('index.html', Cashback_Table = cashback_table, \
     Start_Date = StartDate, Finish_Date = FinishDate, Recom_Cards = recom_cards)
