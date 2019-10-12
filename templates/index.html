@@ -64,11 +64,12 @@
                 <label for="CardName">Загрузите .csv файл с покупками</label>
                 <input required type="file" name="MccFile" accept=".csv">
                {% if Wrong_Ext is defined %}
-               <p><font color="red">Недопустимый формат файла: {{ Wrong_Ext }}! Только .csv можно загрузить.</font></p>
+               <p><font color="red">Недопустимый формат файла: {{ Wrong_Ext }}! Можно загрузить только .csv</font></p>
                {% endif %}
                <div>
                <br>
-               <input type="checkbox" name="enable_pens_cards" value="pens">Включая пенсионные карты</p>
+               <input type="checkbox" name="enable_pens_cards" {% if Enable_Pens_Cards == 1 %}checked{% endif %}>Включать пенсионные карты</p>
+               <input type="checkbox" name="enable_credit_cards" {% if Enable_Credit_Cards == 1 %}checked{% endif %}>Включать кредитные карты</p>
                </div>
               </div>
               <div class="form-group col-md-6">

@@ -75,7 +75,7 @@ def cashback_table_calc(card_params, mcc_table):
         replace("+", "").replace(" ", "").replace(",", ".").replace("\xa0", ""))
 
         cashbacks_for_mcc = []
-        for k in range(1, len(card_params)):
+        for k in range(len(card_params)):
 
             line = []
             if mcc in card_params[k][7].split(", "):
@@ -115,7 +115,7 @@ def cashback_table_calc(card_params, mcc_table):
     return cashback_table
 
 
-def recom_cards_count(cashback_table, all_card_params, months_count):
+def recom_cards_count(cashback_table, card_params, months_count):
     # get all card names from cashback_table
     all_cards = []
     for card_names in [col[4] for col in cashback_table]:
@@ -130,14 +130,20 @@ def recom_cards_count(cashback_table, all_card_params, months_count):
             if card in cashback_table[i][4].split(", "):
                card_total_income = card_total_income + Decimal(cashback_table[i][2])
 
-            issue_fee = Decimal(all_card_params[[col[0] for col in all_card_params].index(card)][10])
-            monthly_fee = Decimal(all_card_params[[col[0] for col in all_card_params].index(card)][5])
-            if all_card_params[[col[0] for col in all_card_params].index(card)][14] :
-               notes = all_card_params[[col[0] for col in all_card_params].index(card)][14]
+            issue_fee = Decimal(card_params[[col[0] for col in card_params].index(card)][10])
+            monthly_fee = Decimal(card_params[[col[0] for col in card_params].index(card)][5])
+
+            if card_params[[col[0] for col in card_params].index(card)][13] :
+               turnover_to_free = Decimal(card_params[[col[0] for col in card_params].index(card)][13])
+               #print(card_total_income/months_count)
+               if card_total_income/months_count > turnover_to_free:
+                  monthly_fee = 0
+
+            if card_params[[col[0] for col in card_params].index(card)][14] :
+               notes = card_params[[col[0] for col in card_params].index(card)][14]
             else:
                  notes = ""
 
-#            print(issue_fee)
         card_total_income = round(card_total_income - monthly_fee*months_count - issue_fee,2)
 
         recom_cards.append([card_total_income, card, round(card_total_income/months_count,2), notes])
@@ -183,32 +189,46 @@ def index_post():
        return render_template('index.html', Wrong_Elements = check_mcc_table(mcc_table), \
        Start_Date = StartDate, Finish_Date = FinishDate)
 
+    card_params = all_card_params[1:]
+
     if not request.form.get('enable_pens_cards'):
-       for n in range(len(all_card_params)):
-           if all_card_params[n][12] == "Да":
-              all_card_params.remove(all_card_params[n])
+       for n in card_params:
+           if n[12] == "Да":
+              card_params.remove(n)
+       enable_pens_cards = 0
+    else:
+         enable_pens_cards = 1
+
+    if not request.form.get('enable_credit_cards'):
+       for n in card_params:
+           if n[14] == "Кредитная":
+              card_params.remove(n)
+       enable_credit_cards = 0
+    else:
+         enable_credit_cards = 1
 
     k = 1
     while k != 0:
           # count max cashback for each purchase
-          cashback_table = cashback_table_calc(all_card_params, mcc_table)
+          cashback_table = cashback_table_calc(card_params, mcc_table)
           # count total income for each card for every purchase
-          recom_cards = recom_cards_count(cashback_table, all_card_params, months_count)
+          recom_cards = recom_cards_count(cashback_table, card_params, months_count)
           # choose card with max cashback per purchase and modify cashback_table
           cashback_table = choose_one_card_per_purchase(cashback_table, recom_cards)
           # count cashback for every purchase with the best card
-          recom_cards = recom_cards_count(cashback_table, all_card_params, months_count)
+          recom_cards = recom_cards_count(cashback_table, card_params, months_count)
           # remove cards with minus result
           k = 0
           for n in range(len(recom_cards)):
               if recom_cards[n][0] < 0:
-                 all_card_params.remove(all_card_params[[col[0] for col in all_card_params].index(recom_cards[n][1])])
+                 card_params.remove(card_params[[col[0] for col in card_params].index(recom_cards[n][1])])
                  k += 1
 
     recom_cards.sort(reverse=True)
     recom_cards.append([sum([col[0] for col in recom_cards]), "ИТОГО:", sum([col[2] for col in recom_cards])])
 
     return render_template('index.html', Cashback_Table = cashback_table, \
+    Enable_Pens_Cards = enable_pens_cards, Enable_Credit_Cards = enable_credit_cards, \
     Start_Date = StartDate, Finish_Date = FinishDate, Recom_Cards = recom_cards)
 
 
