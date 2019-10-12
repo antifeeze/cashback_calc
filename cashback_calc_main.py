@@ -132,9 +132,15 @@ def recom_cards_count(cashback_table, all_card_params, months_count):
 
             issue_fee = Decimal(all_card_params[[col[0] for col in all_card_params].index(card)][10])
             monthly_fee = Decimal(all_card_params[[col[0] for col in all_card_params].index(card)][5])
+            if all_card_params[[col[0] for col in all_card_params].index(card)][14] :
+               notes = all_card_params[[col[0] for col in all_card_params].index(card)][14]
+            else:
+                 notes = ""
+
 #            print(issue_fee)
         card_total_income = round(card_total_income - monthly_fee*months_count - issue_fee,2)
-        recom_cards.append([card_total_income, card, round(card_total_income/months_count,2)])
+
+        recom_cards.append([card_total_income, card, round(card_total_income/months_count,2), notes])
 
     return recom_cards
 
@@ -181,7 +187,7 @@ def index_post():
        for n in range(len(all_card_params)):
            if all_card_params[n][12] == "Да":
               all_card_params.remove(all_card_params[n])
-    print(all_card_params)
+
     k = 1
     while k != 0:
           # count max cashback for each purchase
