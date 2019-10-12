@@ -122,7 +122,6 @@ def recom_cards_count(cashback_table, all_card_params, months_count):
         for card_name in card_names.split(", "):
            if card_name not in all_cards:
               all_cards.append(card_name)
-    print(all_cards)
     # get recom cards list
     recom_cards = []
     for card in all_cards:
@@ -134,48 +133,9 @@ def recom_cards_count(cashback_table, all_card_params, months_count):
             issue_fee = Decimal(all_card_params[[col[0] for col in all_card_params].index(card)][10])
             monthly_fee = Decimal(all_card_params[[col[0] for col in all_card_params].index(card)][5])
 #            print(issue_fee)
-#            print(monthly_fee)
-#            print(card_total_income)
         card_total_income = round(card_total_income - monthly_fee*months_count - issue_fee,2)
         recom_cards.append([card_total_income, card, round(card_total_income/months_count,2)])
 
-    return recom_cards
-
-
-
-def card_recom(cashback_table, StartDate, FinishDate, all_card_params, mcc_table):
-
-    months_count = round(Decimal((FinishDate-StartDate).days/30.436875),1)
-
-    # count total income for each card for every purchase
-    recom_cards = recom_cards_count(cashback_table, all_card_params, months_count)
-    # define a card with max cashback for each purchase
-    for n in range(len(cashback_table)):
-        if len(cashback_table[n][4].split(", ")) > 1:
-
-           spents = []
-           for card in cashback_table[n][4].split(", "):
-               spents.append(recom_cards[[col[1] for col in recom_cards].index(card)][0])
-           # modify cashback_table
-           cashback_table[n][4] = recom_cards[[col[0] for col in recom_cards].index(max(spents))][1]
-    # count cashback for every purchase with the best card
-    recom_cards = recom_cards_count(cashback_table, all_card_params, months_count)
-    print(recom_cards)
-
-    # remove cards with minus result
-    for n in range(len(recom_cards)):
-        if recom_cards[n][0] < 0:
-           all_card_params.remove(all_card_params[[col[0] for col in all_card_params].index(recom_cards[n][1])])
-
-    cashback_table = cashback_table_calc(all_card_params, cashback_table)
-
-
-    print(cashback_table)
-    #cashback_table = cashback_table_calc(all_card_params, mcc_table, choose_card = 1)
-
-    recom_cards.sort(reverse=True)
-    recom_cards.append([sum([col[0] for col in recom_cards]), "ИТОГО:", sum([col[2] for col in recom_cards])])
-    #print(recom_cards)
     return recom_cards
 
 
@@ -202,9 +162,10 @@ def main():
 @app.route('/', methods=['POST'])
 def index_post():
 
-    StartDate = datetime.strptime(request.form['StartDate'],'%Y-%m-%d')
-    FinishDate = datetime.strptime(request.form['FinishDate'],'%Y-%m-%d')
-    months_count = round(Decimal((FinishDate-StartDate).days/30.436875),1)
+    StartDate = request.form['StartDate']
+    FinishDate = request.form['FinishDate']
+    months_count = round(Decimal((datetime.strptime(FinishDate, '%Y-%m-%d')-\
+    datetime.strptime(StartDate, '%Y-%m-%d')).days/30.436875),1)
 
     # check input
     mcc_table = file_upload(request.files['MccFile'])
@@ -216,27 +177,27 @@ def index_post():
        return render_template('index.html', Wrong_Elements = check_mcc_table(mcc_table), \
        Start_Date = StartDate, Finish_Date = FinishDate)
 
-    # count max cashback for each purchase
-    cashback_table = cashback_table_calc(all_card_params, mcc_table)
-    # count total income for each card for every purchase
-    recom_cards = recom_cards_count(cashback_table, all_card_params, months_count)
-    # choose card with max cashback per purchase and modify cashback_table
-    cashback_table = choose_one_card_per_purchase(cashback_table, recom_cards)
-    # count cashback for every purchase with the best card
-    recom_cards = recom_cards_count(cashback_table, all_card_params, months_count)
-    # remove cards with minus result
-    for n in range(len(recom_cards)):
-        if recom_cards[n][0] < 0:
-           all_card_params.remove(all_card_params[[col[0] for col in all_card_params].index(recom_cards[n][1])])
-
-    # recount max cashback for each purchase
-    cashback_table = cashback_table_calc(all_card_params, mcc_table)
-    # count total income for each card for every purchase
-    recom_cards = recom_cards_count(cashback_table, all_card_params, months_count)
-    # choose card with max cashback per purchase and modify cashback_table
-    cashback_table = choose_one_card_per_purchase(cashback_table, recom_cards)
-    # count cashback for every purchase with the best card
-    recom_cards = recom_cards_count(cashback_table, all_card_params, months_count)
+    if not request.form.get('enable_pens_cards'):
+       for n in range(len(all_card_params)):
+           if all_card_params[n][12] == "Да":
+              all_card_params.remove(all_card_params[n])
+    print(all_card_params)
+    k = 1
+    while k != 0:
+          # count max cashback for each purchase
+          cashback_table = cashback_table_calc(all_card_params, mcc_table)
+          # count total income for each card for every purchase
+          recom_cards = recom_cards_count(cashback_table, all_card_params, months_count)
+          # choose card with max cashback per purchase and modify cashback_table
+          cashback_table = choose_one_card_per_purchase(cashback_table, recom_cards)
+          # count cashback for every purchase with the best card
+          recom_cards = recom_cards_count(cashback_table, all_card_params, months_count)
+          # remove cards with minus result
+          k = 0
+          for n in range(len(recom_cards)):
+              if recom_cards[n][0] < 0:
+                 all_card_params.remove(all_card_params[[col[0] for col in all_card_params].index(recom_cards[n][1])])
+                 k += 1
 
     recom_cards.sort(reverse=True)
     recom_cards.append([sum([col[0] for col in recom_cards]), "ИТОГО:", sum([col[2] for col in recom_cards])])
