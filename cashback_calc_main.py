@@ -135,7 +135,6 @@ def recom_cards_count(cashback_table, card_params, months_count):
 
             if card_params[[col[0] for col in card_params].index(card)][13] :
                turnover_to_free = Decimal(card_params[[col[0] for col in card_params].index(card)][13])
-               #print(card_total_income/months_count)
                if card_total_income/months_count > turnover_to_free:
                   monthly_fee = 0
 
@@ -201,7 +200,7 @@ def index_post():
 
     if not request.form.get('enable_credit_cards'):
        for n in card_params:
-           if n[14] == "Кредитная":
+           if n[15] == "Кредитная":
               card_params.remove(n)
        enable_credit_cards = 0
     else:
