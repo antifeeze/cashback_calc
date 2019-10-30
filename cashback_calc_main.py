@@ -89,7 +89,7 @@ def cashback_table_calc(card_params, mcc_table):
                       line.append(cashback_calc(amount, card_params[k][3], perc, card_params[k][8]))
                if line == []:
                   line = [card_params[k][0]]
-                  line.append(card_params[k][1])
+                  line.append(card_params[k][1].replace("%", "").replace(",", "."))
                   line.append(cashback_calc(amount, card_params[k][3], card_params[k][1].replace("%", "").replace(",", "."), card_params[k][8]))
 
             if line != []:
@@ -133,13 +133,18 @@ def recom_cards_count(cashback_table, card_params, months_count):
             issue_fee = Decimal(card_params[[col[0] for col in card_params].index(card)][6])
             monthly_fee = Decimal(card_params[[col[0] for col in card_params].index(card)][7])
 
+            if card_params[[col[0] for col in card_params].index(card)][2] :
+               monthly_cashback_limit = Decimal(card_params[[col[0] for col in card_params].index(card)][2])
+               if card_total_income/months_count >  monthly_cashback_limit:
+                  card_total_income = monthly_cashback_limit*months_count
+
             if card_params[[col[0] for col in card_params].index(card)][10] :
                turnover_to_free = Decimal(card_params[[col[0] for col in card_params].index(card)][10])
                if card_total_income/months_count > turnover_to_free:
                   monthly_fee = 0
 
             if card_params[[col[0] for col in card_params].index(card)][11] :
-               notes = card_params[[col[0] for col in card_params].index(card)][11]
+               notes = card_params[[col[0] for col in card_params].index(card)][11].split("\n")
             else:
                  notes = ""
 
@@ -191,7 +196,7 @@ def index_post():
     card_params = all_card_params[1:]
 
     if not request.form.get('enable_pens_cards'):
-       for n in card_params:
+       for n in list(card_params):
            if n[9] == "Да":
               card_params.remove(n)
        enable_pens_cards = 0
@@ -199,13 +204,21 @@ def index_post():
          enable_pens_cards = 1
 
     if not request.form.get('enable_credit_cards'):
-       for n in card_params:
+       for n in list(card_params):
            if n[12] == "Кредитная":
               card_params.remove(n)
        enable_credit_cards = 0
     else:
          enable_credit_cards = 1
 
+    if not request.form.get('enable_discount_cards'):
+       for n in list(card_params):
+           if n[13] in ["Скидка за баллы", "Мили"]:
+              card_params.remove(n)
+       enable_discount_cards = 0
+    else:
+         enable_discount_cards = 1
+    #print(card_params)
     k = 1
     while k != 0:
           # count max cashback for each purchase
@@ -228,7 +241,8 @@ def index_post():
 
     return render_template('index.html', Cashback_Table = cashback_table, \
     Enable_Pens_Cards = enable_pens_cards, Enable_Credit_Cards = enable_credit_cards, \
-    Start_Date = StartDate, Finish_Date = FinishDate, Recom_Cards = recom_cards)
+    Enable_Discount_Cards = enable_discount_cards, Start_Date = StartDate, \
+    Finish_Date = FinishDate, Recom_Cards = recom_cards)
 
 
 @app.route('/cards', methods=['GET'])
