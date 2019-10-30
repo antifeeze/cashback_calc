@@ -74,43 +74,42 @@ def cashback_table_calc(card_params, mcc_table):
         amount = Decimal(str(mcc_table[i][1]).strip().replace("−", "").replace("-", "").\
         replace("+", "").replace(" ", "").replace(",", ".").replace("\xa0", ""))
 
+        # find cashback for mcc from each card
         cashbacks_for_mcc = []
         for k in range(len(card_params)):
 
             line = []
-            if mcc in card_params[k][7].split(", "):
-               line = [card_params[k][0]]
-               high_perc = Decimal(card_params[k][2].replace("%", "").replace(",", "."))
-               line.append(high_perc)
-               line.append(cashback_calc(amount, card_params[k][4], high_perc, card_params[k][11]))
-            elif mcc in card_params[k][9].split(", "):
-                 line = [card_params[k][0]]
-                 high_perc2 = Decimal(card_params[k][8].replace("%", "").replace(",", "."))
-                 line.append(high_perc2)
-                 line.append(cashback_calc(amount, card_params[k][4], high_perc2, card_params[k][11]))
-            elif mcc not in card_params[k][6].split(", "):
-                 default_perc = Decimal(card_params[k][1].replace("%", "").replace(",", "."))
-                 if default_perc != Decimal("0.00"):
-                    line = [card_params[k][0]]
-                    line.append(default_perc)
-                    line.append(cashback_calc(amount, card_params[k][4], default_perc, card_params[k][11]))
+            if mcc not in card_params[k][4].split(", "):
+               for cat_line in card_params[k][5].splitlines():
+                   perc = cat_line.split("% - ")[0]
+                   cat_mcc_list = cat_line.split("% - ")[1].strip().split(", ")
+                   if mcc in cat_mcc_list:
+                      line = [card_params[k][0]]
+                      line.append(perc)
+                      line.append(cashback_calc(amount, card_params[k][3], perc, card_params[k][8]))
+               if line == []:
+                  line = [card_params[k][0]]
+                  line.append(card_params[k][1])
+                  line.append(cashback_calc(amount, card_params[k][3], card_params[k][1].replace("%", "").replace(",", "."), card_params[k][8]))
 
             if line != []:
                cashbacks_for_mcc.append(line)
 
-           # find max cashback
-        if len(cashbacks_for_mcc) >= 1:
-           cashbacks_for_mcc_max = cashbacks_for_mcc[0]
-           if len(cashbacks_for_mcc) > 1:
-              max_cashback = cashbacks_for_mcc[0][2]
-              for n in range(1, len(cashbacks_for_mcc)):
-                  if cashbacks_for_mcc[n][2] > max_cashback:
-                     cashbacks_for_mcc_max = cashbacks_for_mcc[n]
-                     max_cashback = cashbacks_for_mcc[n][2]
-                  elif cashbacks_for_mcc[n][2] == max_cashback:
-                       cashbacks_for_mcc_max[0] = cashbacks_for_mcc_max[0] + ", " + cashbacks_for_mcc[n][0]
+        # find max cashback
+        if cashbacks_for_mcc == []:
+           cashback_table.append([mcc, amount, "0.00", "0.00", "Без кэшбэка"])
+        else:
+             cashbacks_for_mcc_max = cashbacks_for_mcc[0]
+             if len(cashbacks_for_mcc) > 1:
+                max_cashback = cashbacks_for_mcc[0][2]
+                for n in range(1, len(cashbacks_for_mcc)):
+                    if cashbacks_for_mcc[n][2] > max_cashback:
+                       cashbacks_for_mcc_max = cashbacks_for_mcc[n]
+                       max_cashback = cashbacks_for_mcc[n][2]
+                    elif cashbacks_for_mcc[n][2] == max_cashback:
+                         cashbacks_for_mcc_max[0] = cashbacks_for_mcc_max[0] + ", " + cashbacks_for_mcc[n][0]
 
-           cashback_table.append([mcc, amount, str(cashbacks_for_mcc_max[2]), str(cashbacks_for_mcc_max[1]), cashbacks_for_mcc_max[0]])
+             cashback_table.append([mcc, amount, str(cashbacks_for_mcc_max[2]), str(cashbacks_for_mcc_max[1]), cashbacks_for_mcc_max[0]])
 
     return cashback_table
 
@@ -120,8 +119,9 @@ def recom_cards_count(cashback_table, card_params, months_count):
     all_cards = []
     for card_names in [col[4] for col in cashback_table]:
         for card_name in card_names.split(", "):
-           if card_name not in all_cards:
-              all_cards.append(card_name)
+           if card_name != "Без кэшбэка":
+              if card_name not in all_cards:
+                 all_cards.append(card_name)
     # get recom cards list
     recom_cards = []
     for card in all_cards:
@@ -130,16 +130,16 @@ def recom_cards_count(cashback_table, card_params, months_count):
             if card in cashback_table[i][4].split(", "):
                card_total_income = card_total_income + Decimal(cashback_table[i][2])
 
-            issue_fee = Decimal(card_params[[col[0] for col in card_params].index(card)][10])
-            monthly_fee = Decimal(card_params[[col[0] for col in card_params].index(card)][5])
+            issue_fee = Decimal(card_params[[col[0] for col in card_params].index(card)][6])
+            monthly_fee = Decimal(card_params[[col[0] for col in card_params].index(card)][7])
 
-            if card_params[[col[0] for col in card_params].index(card)][13] :
-               turnover_to_free = Decimal(card_params[[col[0] for col in card_params].index(card)][13])
+            if card_params[[col[0] for col in card_params].index(card)][10] :
+               turnover_to_free = Decimal(card_params[[col[0] for col in card_params].index(card)][10])
                if card_total_income/months_count > turnover_to_free:
                   monthly_fee = 0
 
-            if card_params[[col[0] for col in card_params].index(card)][14] :
-               notes = card_params[[col[0] for col in card_params].index(card)][14]
+            if card_params[[col[0] for col in card_params].index(card)][11] :
+               notes = card_params[[col[0] for col in card_params].index(card)][11]
             else:
                  notes = ""
 
@@ -192,7 +192,7 @@ def index_post():
 
     if not request.form.get('enable_pens_cards'):
        for n in card_params:
-           if n[12] == "Да":
+           if n[9] == "Да":
               card_params.remove(n)
        enable_pens_cards = 0
     else:
@@ -200,7 +200,7 @@ def index_post():
 
     if not request.form.get('enable_credit_cards'):
        for n in card_params:
-           if n[15] == "Кредитная":
+           if n[12] == "Кредитная":
               card_params.remove(n)
        enable_credit_cards = 0
     else:
