@@ -84,13 +84,17 @@ def cashback_table_calc(card_params, mcc_table):
                    perc = cat_line.split("% - ")[0]
                    cat_mcc_list = cat_line.split("% - ")[1].strip().split(", ")
                    if mcc in cat_mcc_list:
-                      line = [card_params[k][0]]
-                      line.append(perc)
-                      line.append(cashback_calc(amount, card_params[k][3], perc, card_params[k][8]))
+                      cashback_amount = cashback_calc(amount, card_params[k][3], perc, card_params[k][8])
+                      if cashback_amount > 0:
+                         line = [card_params[k][0]]
+                         line.append(perc)
+                         line.append(cashback_amount)
                if line == []:
-                  line = [card_params[k][0]]
-                  line.append(card_params[k][1].replace("%", "").replace(",", "."))
-                  line.append(cashback_calc(amount, card_params[k][3], card_params[k][1].replace("%", "").replace(",", "."), card_params[k][8]))
+                  cashback_amount = cashback_calc(amount, card_params[k][3], card_params[k][1].replace("%", "").replace(",", "."), card_params[k][8])
+                  if cashback_amount > 0:
+                     line = [card_params[k][0]]
+                     line.append(card_params[k][1].replace("%", "").replace(",", "."))
+                     line.append(cashback_amount)
 
             if line != []:
                cashbacks_for_mcc.append(line)
@@ -218,7 +222,7 @@ def index_post():
        enable_discount_cards = 0
     else:
          enable_discount_cards = 1
-    #print(card_params)
+
     k = 1
     while k != 0:
           # count max cashback for each purchase
