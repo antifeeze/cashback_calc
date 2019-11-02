@@ -170,13 +170,13 @@
       <tbody>
         {% for k in Cashback_Table %}
         <tr>
-          <th scope="row">{{ k[0] }}</th>
-          <td>{{ k[1] }} рублей</td>
+          <th scope="row">{{ k[1] }}</th>
           <td>{{ k[2] }} рублей</td>
-          <td>{{ k[3] }} %</td>
-          {% if k[4] is defined %}
+          <td>{{ k[3] }} рублей</td>
+          <td>{{ k[4] }} %</td>
+          {% if k[5] is defined %}
           <td>
-          {% for p in k[4].split(", ") %}
+          {% for p in k[5].split(", ") %}
           {{ p }}<br>
           {% endfor %}
           </td>
