@@ -110,6 +110,7 @@ def get_cashbacks_for_mcc (card_params, mcc, amount):
     return cashbacks_for_mcc
 
 
+# choose max cashback and find delta between previous max cashback
 def choose_max_cashbacks_for_mcc(cashbacks_for_mcc):
 
     max_cashbacks_for_mcc = []
@@ -124,9 +125,10 @@ def choose_max_cashbacks_for_mcc(cashbacks_for_mcc):
               max_local_cashback = cashbacks_for_mcc[n][2]
            elif cashbacks_for_mcc[n][2] == max_local_cashback:
                 max_cashbacks_for_mcc[0] = max_cashbacks_for_mcc[0] + ", " + cashbacks_for_mcc[n][0]
-                max_cashbacks_for_mcc.append(Decimal("0"))
+                max_cashbacks_for_mcc[3] = Decimal("0")
            elif cashbacks_for_mcc[n][2] < max_local_cashback:
-                max_cashbacks_for_mcc[3] = max_local_cashback - max_cashbacks_for_mcc[3]
+                if max_cashbacks_for_mcc[3] > max_local_cashback - cashbacks_for_mcc[n][2]:
+                   max_cashbacks_for_mcc[3] = max_local_cashback - cashbacks_for_mcc[n][2]
     else:
          max_cashbacks_for_mcc = cashbacks_for_mcc
          max_cashbacks_for_mcc.append(cashbacks_for_mcc[2])
@@ -137,18 +139,11 @@ def choose_max_cashbacks_for_mcc(cashbacks_for_mcc):
 def create_cashback_table(card_params, mcc_table, months_count, limit_recount_cards = []):
 
     cashback_table = []
-    #card_spents_list = {}
     num = 0
     for i in range(len(mcc_table)):
         mcc = str(mcc_table[i][0]).strip()
         amount = Decimal(str(mcc_table[i][1]).strip().replace("−", "").replace("-", "").\
         replace("+", "").replace(" ", "").replace(",", ".").replace("\xa0", ""))
-
-        # decline card if above limit
-       # if check_limit == 1:
-         #  if card_name in card_spents_list:
-         #     if card_spents_list[card_name]/months_count > monthly_cashback_limit:
-          #       break
 
         # find cashback for this mcc from each card
         cashbacks_for_mcc = get_cashbacks_for_mcc(card_params, mcc, amount)
@@ -161,9 +156,8 @@ def create_cashback_table(card_params, mcc_table, months_count, limit_recount_ca
              cashback_table.append([num, mcc, amount, str(max_cashbacks_for_mcc[2]), \
              str(max_cashbacks_for_mcc[1]), max_cashbacks_for_mcc[0], max_cashbacks_for_mcc[3]])
         num += 1
-
-    print(sorted(cashback_table, key=lambda x : float(x[6]),reverse=True))
     return cashback_table
+
 
 def recom_cards_count(cashback_table, card_params, months_count):
     # get all card names from cashback_table
@@ -176,13 +170,16 @@ def recom_cards_count(cashback_table, card_params, months_count):
     # get recom cards list
     recom_cards = []
     for card in all_cards:
-        card_total_income = Decimal("0")
-        for i in range(len(cashback_table)):
-            if card in cashback_table[i][5].split(", "):
-               card_total_income = card_total_income + Decimal(cashback_table[i][3])
-
+        if card_params[[col[0] for col in card_params].index(card)][2]:
+           cashback_limit = Decimal(card_params[[col[0] for col in card_params].index(card)][2])
         issue_fee = Decimal(card_params[[col[0] for col in card_params].index(card)][6])
         monthly_fee = Decimal(card_params[[col[0] for col in card_params].index(card)][7])
+        card_total_income = Decimal("0")
+
+        for i in range(len(cashback_table)):
+            if card in cashback_table[i][5].split(", "):
+               if (card_total_income + Decimal(cashback_table[i][3]))/months_count < cashback_limit:
+                  card_total_income = card_total_income + Decimal(cashback_table[i][3])
 
         if card_params[[col[0] for col in card_params].index(card)][10] :
            turnover_to_free = Decimal(card_params[[col[0] for col in card_params].index(card)][10])
@@ -214,40 +211,39 @@ def choose_one_card_per_purchase(cashback_table, recom_cards):
 
 
 def modify_cashback_table(cashback_table, card_params, months_count, limit_recount_cards):
-    cb_table = sorted(cashback_table, key=lambda x : float(x[6]),reverse=True)
-    #print(cb_table)
+    cashback_table_sorted = sorted(cashback_table, key=lambda x : float(x[6]),reverse=True)
 
     for card in limit_recount_cards:
         card_total_income = Decimal("0")
         cashback_limit = Decimal(card_params[[col[0] for col in card_params].index(card)][2])
         card_paramss = list(card_params)
         card_paramss.remove(card_params[[col[0] for col in card_params].index(card)])
-        for i in range(len(cb_table)):
-            if cb_table[i][5] == card:
-               card_total_income = card_total_income + Decimal(cb_table[i][3])
-               print(cb_table[i][6])
+        for i in range(len(cashback_table_sorted)):
+            if cashback_table_sorted[i][5] == card:
+               card_total_income = card_total_income + Decimal(cashback_table_sorted[i][3])
+               # choose new cards for mccs where limit exceeded
                if card_total_income/months_count > cashback_limit:
-                  print(cashback_table[[col[0] for col in cashback_table].index(cb_table[i][0])])
-
-                  mcc = cashback_table[[col[0] for col in cashback_table].index(cb_table[i][0])][1]
-                  amount = cashback_table[[col[0] for col in cashback_table].index(cb_table[i][0])][2]
+                  num = cashback_table_sorted[i][0]
+                  mcc = cashback_table_sorted[i][1]
+                  amount = cashback_table_sorted[i][2]
+                  cashback_table_index = cashback_table[[col[0] for col in cashback_table].index(num)][0]
 
                   cashbacks_for_mcc = get_cashbacks_for_mcc(card_paramss, mcc, amount)
-
-                  print(choose_max_cashbacks_for_mcc(cashbacks_for_mcc))
                   # find max cashback(s) for this mcc
-                  #if cashbacks_for_mcc == []:
-                     #cb_table[n][5] = "Без кэшбэка"
-                     #cb_table.append([num, mcc, amount, "0.00", "0.00", "Без кэшбэка", Decimal("0.00")])
-                  #else:
-                       #max_cashbacks_for_mcc = choose_max_cashbacks_for_mcc(cashbacks_for_mcc)
-                       #cashback_table.append([num, mcc, amount, str(max_cashbacks_for_mcc[2]), \
-                       #str(max_cashbacks_for_mcc[1]), max_cashbacks_for_mcc[0], max_cashbacks_for_mcc[3]])
 
-               #limit
-        print(card_total_income)
+                  if cashbacks_for_mcc == []:
+                     cashback_table[cashback_table_index][3] = "0.00"
+                     cashback_table[cashback_table_index][4] = "0.00"
+                     cashback_table[cashback_table_index][5] = "Без кэшбэка"
+                     cashback_table[cashback_table_index][6] = Decimal("0.00")
+                  else:
+                       max_cashbacks_for_mcc = choose_max_cashbacks_for_mcc(cashbacks_for_mcc)
+                       cashback_table[cashback_table_index][3] = str(max_cashbacks_for_mcc[2])
+                       cashback_table[cashback_table_index][4] = str(max_cashbacks_for_mcc[1])
+                       cashback_table[cashback_table_index][5] = str(max_cashbacks_for_mcc[0])
+                       cashback_table[cashback_table_index][6] = Decimal(max_cashbacks_for_mcc[3])
 
-    return cb_table
+    return cashback_table
 
 
 @app.route('/', methods=['GET'])
@@ -314,11 +310,19 @@ def index_post():
           # count cashback for every mcc with the best card
           recom_cards = recom_cards_count(cashback_table, card_params, months_count)
           # recount in case of limit exceeding
-          for n in range(len(recom_cards)):
-              if recom_cards[n][0]/months_count > Decimal(card_params[[col[0] for col in card_params].index(recom_cards[n][1])][2]):
-                 if recom_cards[n][1] not in limit_recount_cards:
-                    limit_recount_cards.append(recom_cards[n][1])
-          modify_cashback_table(cashback_table, card_params, months_count, limit_recount_cards)
+          n = 0
+          while n != 0:
+                for n in range(len(recom_cards)):
+                    if card_params[[col[0] for col in card_params].index(recom_cards[n][1])][2]:
+                       if recom_cards[n][0]/months_count > Decimal(card_params[[col[0] for col in card_params].index(recom_cards[n][1])][2]):
+                          if recom_cards[n][1] not in limit_recount_cards:
+                             limit_recount_cards.append(recom_cards[n][1])
+                if limit_recount_cards != []:
+                   cashback_table = modify_cashback_table(cashback_table, card_params, months_count, limit_recount_cards)
+                   recom_cards = recom_cards_count(cashback_table, card_params, months_count)
+                   cashback_table = choose_one_card_per_purchase(cashback_table, recom_cards)
+                   recom_cards = recom_cards_count(cashback_table, card_params, months_count)
+                   n += 1
 
           # remove cards with minus result
           k = 0
@@ -326,8 +330,6 @@ def index_post():
               if recom_cards[n][0] < 0:
                  card_params.remove(card_params[[col[0] for col in card_params].index(recom_cards[n][1])])
                  k += 1
-
-
 
 
     recom_cards.sort(reverse=True)
