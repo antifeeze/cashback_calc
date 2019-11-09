@@ -55,13 +55,13 @@
       <table border="1" class="table">
       <thead>
         <tr>
-          {% for k in All_Card_Params[0][:15] %}
+          {% for k in All_Cards_Params[0][:15] %}
           <th scope="row">{{ k }}</th>
           {% endfor %}
         </tr>
       </thead>
       <tbody>
-        {% for k in All_Card_Params[1:] %}
+        {% for k in All_Cards_Params[1:] %}
         <tr>
         <th scope="row">{{ k[0] }}</th>
         {% for n in k[1:15] %}

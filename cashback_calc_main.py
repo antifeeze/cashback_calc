@@ -124,7 +124,7 @@ def choose_max_cashbacks_for_mcc(cashbacks_for_mcc):
     return max_cashbacks_for_mcc
 
 
-def create_cashback_table(cards_params, mcc_table, months_count, limit_recount_cards = []):
+def create_cashback_table(cards_params, mcc_table, months_count):
 
     cashback_table = []
     num = 0
@@ -283,6 +283,24 @@ def choose_card_percents(card_percents, monthly_turnover = 0):
     return card_percents_mod
 
 
+def modify_cards_params_by_turnover(recom_cards, all_cards_params, cards_params):
+    for n in range(len(recom_cards)):
+        card_percents_raw = all_cards_params[[col[0] for col in all_cards_params].index(recom_cards[n][1])][4]
+        card_percents_prev = cards_params[[col[0] for col in cards_params].index(recom_cards[n][1])][4]
+        card_percents_new = choose_card_percents(card_percents_raw, recom_cards[n][4])
+
+        if card_percents_new != card_percents_prev:
+           print("|||")
+           print(recom_cards[n][1])
+           print(recom_cards[n][4])
+           print(cards_params[[col[0] for col in cards_params].index(recom_cards[n][1])][4])
+
+           cards_params[[col[0] for col in cards_params].index(recom_cards[n][1])][4] = card_percents_new
+           print(cards_params[[col[0] for col in cards_params].index(recom_cards[n][1])][4])
+
+    return cards_params
+
+
 @app.route('/', methods=['GET'])
 def main():
 
@@ -339,49 +357,65 @@ def index_post():
     for card_params in cards_params:
         card_params[4] = choose_card_percents(card_params[4])
 
-    k = 1
-    limit_recount_cards = []
-    while k != 0:
-          # count max cashback for each purchase (could be several cards for each mcc)
-          cashback_table = create_cashback_table(cards_params, mcc_table, months_count)
-          # count total income for each card from short list and return recom_cards
-          recom_cards = recom_cards_count(cashback_table, cards_params, months_count)
-          # choose card with max cashback per mcc and modify cashback_table
-          cashback_table = choose_one_card_per_purchase(cashback_table, recom_cards)
-          # count cashback for every mcc with the best card
-          recom_cards = recom_cards_count(cashback_table, cards_params, months_count)
-          # recount in case of limit exceeding
-          n = 1
-          while n != 0:
-                print("|||")
-                # Нужно сопоставление оборотов и процентов!
-                for n in range(len(recom_cards)):
-                    card_percents_raw = all_cards_params[[col[0] for col in all_cards_params].index(recom_cards[n][1])][4]
-                    #print(recom_cards[n][1])
-                    #print(recom_cards[n][4])
-                    cards_params[[col[0] for col in cards_params].index(recom_cards[n][1])][4] = choose_card_percents(card_percents_raw, recom_cards[n][4])
+    minus_recount = 1
+    while minus_recount != 0:
+          turn_limit_recount = 1
+          while turn_limit_recount != 0:
+                turn_recount = 1
+                while turn_recount != 0:
+                      # count max cashback for each purchase (could be several cards for each mcc)
+                      cashback_table = create_cashback_table(cards_params, mcc_table, months_count)
+                      # count total income for each card from short list and return recom_cards
+                      recom_cards = recom_cards_count(cashback_table, cards_params, months_count)
+                      # choose card with max cashback per mcc and modify cashback_table
+                      cashback_table = choose_one_card_per_purchase(cashback_table, recom_cards)
+                      # count cashback for every mcc with the best card
+                      recom_cards = recom_cards_count(cashback_table, cards_params, months_count)
+                      # check cards percents depending on turnover
+                      turn_recount = 0
+                      cards_params_prev = deepcopy(cards_params)
+                      cards_params = modify_cards_params_by_turnover(recom_cards, all_cards_params, cards_params)
+                      if cards_params != cards_params_prev:
+                         turn_recount = 1
 
-                for n in range(len(recom_cards)):
-                    if cards_params[[col[0] for col in cards_params].index(recom_cards[n][1])][2]:
-                       if cards_params[[col[0] for col in cards_params].index(recom_cards[n][1])][1]:
-                          if recom_cards[n][0]/months_count > Decimal(cards_params[[col[0] for col in cards_params].index(recom_cards[n][1])][1]):
-                             if recom_cards[n][1] not in limit_recount_cards:
-                                limit_recount_cards.append(recom_cards[n][1])
-                if limit_recount_cards != []:
-                   cashback_table = modify_cashback_table(cashback_table, cards_params, months_count, limit_recount_cards)
-                   recom_cards = recom_cards_count(cashback_table, cards_params, months_count)
-                   cashback_table = choose_one_card_per_purchase(cashback_table, recom_cards)
-                   recom_cards = recom_cards_count(cashback_table, cards_params, months_count)
-                   n += 1
-                else:
-                     n = 0
+                # recount in case of limit exceeding
+                limit_recount = 1
+                recount_cards = []
+                while limit_recount != 0:
+                      for n in range(len(recom_cards)):
+                          # check limit exceeding
+                          if cards_params[[col[0] for col in cards_params].index(recom_cards[n][1])][1]:
+                             if recom_cards[n][0]/months_count > Decimal(cards_params[[col[0] for col in cards_params].index(recom_cards[n][1])][1]):
+                                if recom_cards[n][1] not in recount_cards:
+                                   recount_cards.append(recom_cards[n][1])
 
-          # remove cards with minus result
-          k = 0
+                      limit_recount = 0
+                      if recount_cards != []:
+                         cashback_table = modify_cashback_table(cashback_table, cards_params, months_count, recount_cards)
+                         recom_cards = recom_cards_count(cashback_table, cards_params, months_count)
+                         cashback_table = choose_one_card_per_purchase(cashback_table, recom_cards)
+                         recom_cards = recom_cards_count(cashback_table, cards_params, months_count)
+                         limit_recount = 1
+
+                turn_limit_recount = 0
+                # check cards percents depending on turnover
+                cards_params_prev = deepcopy(cards_params)
+                cards_params = modify_cards_params_by_turnover(recom_cards, all_cards_params, cards_params)
+                if cards_params != cards_params_prev:
+                   turn_limit_recount = 1
+
+          minus_recount = 0
+          minus_cards = []
+          # remove card with max minus result
           for n in range(len(recom_cards)):
               if recom_cards[n][0] < 0:
-                 cards_params.remove(cards_params[[col[0] for col in cards_params].index(recom_cards[n][1])])
-                 k += 1
+                 minus_cards.append([recom_cards[n][1], recom_cards[n][0]])
+          #print(minus_cards)
+          if minus_cards != []:
+             minus_card_remove = sorted(minus_cards, key=lambda x : float(x[1]))[0]
+             cards_params.remove(cards_params[[col[0] for col in cards_params].index(minus_card_remove[0])])
+             #print(minus_card_remove[0])
+             minus_recount = 1
 
 
     recom_cards.sort(reverse=True)
