@@ -182,10 +182,10 @@ def recom_cards_count(cashback_table, cards_params, months_count):
            notes = cards_params[[col[0] for col in cards_params].index(card)][10].split("\n")
         else:
              notes = ""
-
+        card_total_cashback = card_total_income
         card_total_income = round(card_total_income - monthly_fee*months_count - issue_fee,2)
 
-        recom_cards.append([card_total_income, card, round(card_total_income/months_count,2), notes, card_total_spents])
+        recom_cards.append([card_total_income, card, round(card_total_income/months_count,2), notes, card_total_spents, card_total_cashback])
 
     return recom_cards
 
@@ -206,13 +206,13 @@ def modify_cashback_table(cashback_table, cards_params, months_count, limit_reco
     cashback_table_sorted = sorted(cashback_table, key=lambda x : float(x[6]),reverse=True)
 
     for card in limit_recount_cards:
-        card_total_income = Decimal("0")
+        card_total_cashback = Decimal("0")
         monthly_cashback_limit = Decimal(cards_params[[col[0] for col in cards_params].index(card)][2])
         cards_paramss = list(cards_params)
         cards_paramss.remove(cards_params[[col[0] for col in cards_params].index(card)])
         for i in range(len(cashback_table_sorted)):
             if cashback_table_sorted[i][5] == card:
-               card_total_income = card_total_income + Decimal(cashback_table_sorted[i][3])
+               card_total_cashback = card_total_cashback + Decimal(cashback_table_sorted[i][3])
                # choose new cards for mccs where limit exceeded
                if card_total_income/months_count > monthly_cashback_limit:
                   num = cashback_table_sorted[i][0]
@@ -347,7 +347,7 @@ def index_post():
 
     if not request.form.get('enable_discount_cards'):
        for n in list(cards_params):
-           if n[12] in ["Скидка за баллы", "Мили"]:
+           if n[12] in ["Скидка за баллы", "Мили", "Обмен на товары/услуги"]:
               cards_params.remove(n)
        enable_discount_cards = 0
     else:
@@ -385,7 +385,7 @@ def index_post():
                       for n in range(len(recom_cards)):
                           # check limit exceeding
                           if cards_params[[col[0] for col in cards_params].index(recom_cards[n][1])][1]:
-                             if recom_cards[n][0]/months_count > Decimal(cards_params[[col[0] for col in cards_params].index(recom_cards[n][1])][1]):
+                             if recom_cards[n][5]/months_count > Decimal(cards_params[[col[0] for col in cards_params].index(recom_cards[n][1])][1]):
                                 if recom_cards[n][1] not in recount_cards:
                                    recount_cards.append(recom_cards[n][1])
 
